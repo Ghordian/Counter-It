@@ -1,0 +1,20 @@
+package-as: CounterIt
+
+ignore:
+  - .git
+  - .release
+  - .github
+  - README.md
+  - *.bat
+
+externals:
+  Libs/Ace3:
+    url: https://repos.wowace.com/wow/ace3/trunk
+    tag: latest
+  Libs/LibStub:
+    url: https://repos.wowace.com/wow/libstub/trunk
+  Libs/CallbackHandler-1.0:
+    url: https://repos.wowace.com/wow/callbackhandler/trunk
+
+move-folders:
+  CounterIt: .
