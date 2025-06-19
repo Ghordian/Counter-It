@@ -12,7 +12,7 @@ Localization: Spanish (esES), English (enUS)
 - Open Task Monitor by  typing "/cit" command
 - Or use the minimap icon
 - Add a task to be tracked by selecting one of the several already defined template, and mark it as active, it will be shown on the Task Monitor panel, or
-- Define a custom task by editing its properties: Descripcion, Goal, Icon, and at least ONE rule, "Manual" counting rule.
+- Define a custom task by editing its properties: Description, Goal, Icon, and at least ONE rule, "Manual" counting rule.
 - Then mark it as Active.
 - On the Task Monitor panel, use [-] [+] to manage the progress counter, use [R] to set the counter to 0, or use the [P] to pause the task and move it back to the Task Manager panel.
 
