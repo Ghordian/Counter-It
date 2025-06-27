@@ -5,10 +5,11 @@ local L = LibStub("AceLocale-3.0"):GetLocale("CounterIt")
 
 -- Tabla de plantillas predefinidas
 CounterIt.taskTemplates = {
+--[[
   ["Rebuscar en la basura"] = {
     description = "Rebuscar en la basura",
     goal = 25,
-    icon = "Interface\\Icons\\inv_10_engineering_purchasedparts_color2",
+    icon = 134391,
     rules = {
       { type = "spell", spellID = 470986 },
       { type = "spell", spellID = 6247 },
@@ -16,135 +17,165 @@ CounterIt.taskTemplates = {
       { type = "quest", questID = 86918 },
     },
   },
-  ["side-with-a-cartel"] = {
-    description = "Have chosen which Cartel you will align with for that week.",
-    url = "https://www.wowhead.com/quest=86915",
-    goal = 1,
-    icon = 134400,
-    rules = {
-      { type = "quest", questID = 86915 },
-    },
-  },
-  ["ship-right"] = {
-    description = "Realizar 10 trabajos.",
-    url = "https://www.wowhead.com/quest=86917",
+  ["dummyTask"] = {
+    description = "Tarea de ejemplo completa",
     goal = 10,
     icon = 134400,
     rules = {
-      { type = "quest", questID = 86917 },
+        --* Se usa para activar/desactivar automáticamente la tarea
+        { type = "quest", questID = 12345, role = "activation" },
+
+        --* Regla manual, necesaria para considerar la tarea completada
+        { type = "manual", count = 10, role = "completion" },
+
+        --* Se usa como mecanismo de auto-contaje, no evalúa finalización
+        { type = "event", event = "PLAYER_KILL", count = 10, role = "auto-count" },
+
+        --* Alternativamente, si esta quest está completada, se considera terminada la tarea
+        { type = "quest", questID = 12346, role = "completion" },
+    },
+  },
+  ]]--
+
+  ["side-with-a-cartel"] = {
+    description = L["side-with-a-cartel"],
+    url = "https://www.wowhead.com/quest=86915",
+    goal = 1,
+    icon = 134391,
+    step = 1,
+    rules = {
+      { type = "quest", questID = 86915, role = "completion" },
+    },
+  },
+  ["ship-right"] = {
+    description = L["ship-right"],
+    url = "https://www.wowhead.com/quest=86917",
+    goal = 10,
+    icon = 134391,
+    step = 2,
+    rules = {
+      { type = "quest", questID = 86917, role = "completion" },
     },
   },
   ["reclaimed-scrap"] = {
-    description = "Gathered 100 empty Kaja' Cola cans from S.C.R.A.P piles.",
+    description = L["reclaimed-scrap"],
     url = "https://www.wowhead.com/quest=86918",
     goal = 100,
-    icon = 134400,
+    icon = 134391,
+    step = 3,
     rules = {
-      { type = "quest", questID = 86918 },
+      { type = "quest", questID = 86918, role = "completion" },
     },
   },
   ["side-gig"] = {
-    description = "Have completed a Side Gig. Side Gigs are available in the main Transportation Hub.",
+    description =  L["side-gig"],
     url = "https://www.wowhead.com/quest=86919",
     goal = 1,
-    icon = 134400,
+    icon = 134391,
+    step = 4,
     rules = {
-      { type = "quest", questID = 86919 },
+      { type = "quest", questID = 86919, role = "completion" },
     },
   },
   ["war-mode-violence"] = {
-    description = "Defeat five enemy players in War Mode in Undermine.",
+    description = L["war-mode-violence"],
     url = "https://www.wowhead.com/quest=86920",
     goal = 5,
-    icon = 134400,
+    icon = 134391,
+    step = 5,
     rules = {
-      { type = "quest", questID = 86920 },
+      { type = "quest", questID = 86920, role = "completion" },
     },
   },
   ["go-fish"] = {
-    description = "Plantilla dummy generada automáticamente.",
+    description = L["go-fish"],
+    notes = "50 Fishing Pools",
     url = "https://www.wowhead.com/quest=86923",
     goal = 50,
-    icon = 134400,
+    icon = 134391,
+    step = 6,
     rules = {
       -- https://www.wowhead.com/item=227673/gold-fish
-      { type = "item", itemID = 227673, count = 50 },
-      { type = "quest", questID = 86923 },
+      -- https://www.wowhead.com/es/object=457157/escorrent%C3%ADa-bonvapor
+      { type = "item", itemID = 227673, count = 50, role = "auto-count" },
+      { type = "object", object = 457157, role = "auto-count" },
+      { type = "quest", questID = 86923, role = "completion" },
     },
   },
   ["gotta-catch-at-least-a-few"] = {
-    description = "Captura 5 mascotas salvajes",
+    description = L["gotta-catch-at-least-a-few"],
     url = "https://www.wowhead.com/quest=86924",
     goal = 5,
-    icon = "Interface\\Icons\\Ability_Hunter_BeastTaming",
+    icon = 134391,
+    step = 7,
     rules = {
-      { type = "petcapture", count = 5 },
-      { type = "quest", questID = 86924 },
+      { type = "petcapture", count = 5, role = "auto-count" },
+      { type = "quest", questID = 86924, role = "completion" },
     },
   },
   ["rare-rivals"] = {
-    description = "Derrota a 3 NPCs raros de Minahonda.",
+    description = L["rare-rivals"],
     url = "https://www.wowhead.com/quest=87302",
     goal = 3,
-    icon = 134400,
+    icon = 134391,
+    step = 8,
     rules = {
-      { type = "quest", questID = 87302 },
+      { type = "quest", questID = 87302, role = "completion" },
     },
   },
   ["clean-the-sidestreets"] = {
-    description = "complete the Sidestreet Sluice Delve.",
+    description = L["clean-the-sidestreets"],
     url = "https://www.wowhead.com/quest=87303",
     goal = 1,
-    icon = 134400,
+    icon = 134391,
+    step = 9,
     rules = {
-      { type = "quest", questID = 87303 },
+      { type = "quest", questID = 87303, role = "completion" },
     },
   },
   ["time-to-vacate"] = {
-    description = "Excavation Site 9 Delve completed.",
+    description = L["time-to-vacate"],
     url = "https://www.wowhead.com/quest=87304",
     goal = 1,
-    icon = 134400,
+    icon = 134391,
+    step = 10,
     rules = {
-      { type = "quest", questID = 87304 },
+      { type = "quest", questID = 87304, role = "completion" },
     },
   },
   ["desire-to-d-r-i-v-e"] = {
-    description = "Complete two races in Undermine.",
+    description = L["desire-to-d-r-i-v-e"],
     url = "https://www.wowhead.com/quest=87305",
     goal = 2,
-    icon = 134400,
+    icon = 134391,
+    step = 11,
     rules = {
-      { type = "quest", quesID = 87305 },
+      { type = "quest", questID = 87305, role = "completion" },
     },
   },
   ["kaja-cruising"] = {
-    description = "Collecting cans while driving the G-99 Breakneck (D.R.I.V.E. mount).",
+    description = L["kaja-cruising"],
     url = "https://www.wowhead.com/quest=87306",
     goal = 50,
-    icon = 134400,
+    icon = 134391,
+    step = 12,
     rules = {
-      { type = "quest", quesID = 87306 },
+      { type = "quest", questID = 87306, role = "completion" },
     },
   },
   ["garbage-day"] = {
-    description = "Rebuscar en la basura",
+    description = L["garbage-day"],
     url = "https://www.wowhead.com/quest=86918",
     goal = 25,
     icon = "Interface\\Icons\\inv_10_engineering_purchasedparts_color2",
-    iconID = 134400,
+    icon = 134391,
+    step = 13,
     rules = {
-      { type = "spell", spellID = 470986 },
-      { type = "spell", spellID = 6247 },
+      { type = "spell", spellID = 470986, role = "auto-count" },
+      { type = "spell", spellID = 6247, role = "auto-count" },
       { type = "manual", count = 25 },
-      { type = "quest", questID = 86918 },
+      { type = "quest", questID = 86918, role = "completion" },
     },
-  },
-  ["template_lixo"] = {
-    description = "Plantilla dummy generada automáticamente.",
-    goal = 1,
-    icon = 134400,
-    rules = {},
   },
 }
 
@@ -178,7 +209,7 @@ function CounterIt:CreateTaskFromTemplate(name)
   end
 
   if self.globalTasks()[name] then 
-    print(format("TAREA", name, "ya existe"))
+    --self:DEBUG(format("TAREA", name, "ya existe"))
     return -- evitar duplicados
   end
 
@@ -209,7 +240,7 @@ function CounterIt:CheckCompletedQuestsAgainstTasks()
     if task.active and not task.completed and task.rules then
       for _, rule in ipairs(task.rules) do
         if rule.type == "quest" and tContains(completed, rule.questID) then
-          rule.progress = rule.goal or 1
+          rule.progress = rule.count or 1
           self:EvaluateTaskCompletion(name, task)
         end
       end

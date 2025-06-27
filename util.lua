@@ -2,6 +2,9 @@ local CounterIt = LibStub("AceAddon-3.0"):GetAddon("CounterIt")
 local AceGUI = LibStub("AceGUI-3.0")
 local L = LibStub("AceLocale-3.0"):GetLocale("CounterIt")
 
+local GetContainerItemID = (C_Container and C_Container.GetContainerItemID) or GetContainerItemID
+local GetContainerNumSlots = (C_Container and C_Container.GetContainerNumSlots) or GetContainerNumSlots
+
 -- Exportar todas las tareas como texto comprimido
 function CounterIt:ExportTasks()
   local exportData = {}

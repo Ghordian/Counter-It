@@ -3,6 +3,8 @@
 
 local L = LibStub("AceLocale-3.0"):NewLocale("CounterIt", "enUS", true)
 
+if not L then return end
+
 L["TITLE"] = "Counter-It"
 L["TASK_MANAGER_TITLE"] = "Task Manager"
 L["ACTIVE_MONITOR_TITLE"] = "Active Tasks"
@@ -58,6 +60,17 @@ L["SELECT_ICON"] = "Select Icon"
 L["EDIT_RULE"] = "Edit Rule"
 L["STATUSTEXT_NEW_RULE"] = "Define the rule details"
 
+L["TASK_OBJECTIVE_LABEL"] = "Objective"                   -- enUS
+L["TASK_ICON_LABEL"] = "Icon (optional)"                  -- enUS
+L["RULE_TYPE_LABEL"] = "Rule type"                        -- enUS
+L["RULE_ID_LABEL"] = "ID (optional for manual)"           -- enUS
+
+L["RULE_MANUAL"] = "Manual counter"                       -- enUS
+L["RULE_QUEST"] = "Complete quest (questID)"              -- enUS
+L["RULE_ITEM"] = "Obtain item (itemID)"                   -- enUS
+L["RULE_SPELL"] = "Cast spell (spellID)"                  -- enUS
+L["RULE_PETCAPTURE"] = "Capture battle pets"              -- enUS
+
 L["SCROLLFRAME_DEBUG"] = "scrollFrame = %s"
 
 -- events
@@ -71,3 +84,26 @@ L["TASK_TEMPLATE_CREATED"] = "Task created from template: %s"
 L["TEMPLATE_NOT_FOUND"] = "Template not found: %s"
 L["TITLE_SELECT_TEMPLATE"] = "Select Template"
 L["STATUSTEXT_SELECT_TEMPLATE"] = "Choose a template to create a task"
+
+L["side-with-a-cartel"] = "Have chosen which Cartel you will align with for that week"
+L["ship-right"] = "Realizar 10 trabajos."
+L["reclaimed-scrap"] = "Gathered 100 empty Kaja' Cola cans from S.C.R.A.P piles"
+L["side-gig"] = "Have completed a Side Gig. Side Gigs are available in the main Transportation Hub"
+L["war-mode-violence"] = "Defeat five enemy players in War Mode in Undermine"
+L["go-fish"] = "Go fish in Undermine"
+L["gotta-catch-at-least-a-few"] = "Captura 5 mascotas salvajes"
+L["rare-rivals"] = "Derrota a 3 NPCs raros de Minahonda"
+L["clean-the-sidestreets"] = "complete the Sidestreet Sluice Delve"
+L["time-to-vacate"] = "Excavation Site 9 Delve completed"
+L["desire-to-d-r-i-v-e"] = "Complete two races in Undermine"
+L["kaja-cruising"] = "Collecting cans while driving the G-99 Breakneck (D.R.I.V.E. mount)"
+L["garbage-day"] = "Reclaimed Scrap"
+
+-- config
+L["GENERAL_OPTIONS"] = "General Options"
+L["ENABLE_TRIGGERS"] = "Enable automatic triggers"
+L["ENABLE_TRIGGERS_DESC"] = "Allow Counter-It to activate tasks automatically based on in-game conditions."
+L["ENABLE_TRACKING"] = "Enable task tracking"
+L["ENABLE_TRACKING_DESC"] = "Allow active tasks to be displayed and updated in the tracking panel."
+
+

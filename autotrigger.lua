@@ -36,17 +36,35 @@ CounterIt.AutoTrigger = {
           [87307] = "garbage-day",
         },
         ITEM_RECEIVED = {
-            [235053] = "template_lixo",
+            [235053] = { 
+              "garbage-day",
+              "kaja-cruising",
+              "desire-to-d-r-i-v-e",
+              "time-to-vacate",
+              "clean-the-sidestreets",
+              "rare-rivals",
+              "gotta-catch-at-least-a-few",
+              "go-fish",
+              "war-mode-violence",
+              "side-gig",
+              "reclaimed-scrap",
+              "ship-right",
+              "side-with-a-cartel"
+            },
         },
     },
 
     -- API: devolver ID asociado al evento y valor
     GetTaskFromEvent = function (self, event, value)
-        local eventMap = self.Rules[event]
-        if eventMap and eventMap[value] then
-            return eventMap[value]
-        end
-        return nil
+      local eventMap = self.Rules[event]
+      if not eventMap then return nil end
+      local result = eventMap[value]
+      if not result then return nil end
+      if type(result) == "table" then
+        return result -- lista de plantillas
+      else
+        return { result } -- normaliza a lista
+      end
     end,
 
     Register = function(self, event, key, target)

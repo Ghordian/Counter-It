@@ -11,17 +11,18 @@ function CounterIt:EvaluateRule(name, task, rule)
   if rule.type == "manual" or rule.type == "petcapture" then
     local count = getCounters()[name] or 0
     rule.completed = (count >= rule.count)
-  elseif rule.type == "quest" and rule.questID then
-    rule.completed = C_QuestLog.ReadyForTurnIn(rule.questID) or C_QuestLog.IsQuestFlaggedCompleted(rule.questID)
+  elseif rule.type == "quest" and rule.questID and type(rule.questID) == "number" then
+    rule.completed = C_QuestLog.IsQuestFlaggedCompleted(rule.questID) or C_QuestLog.ReadyForTurnIn(tonumber(rule.questID))
   elseif rule.type == "item" and rule.itemID then
     rule.completed = self:HasItem(rule.itemID)
   elseif rule.type == "spell" and rule.spellID then
     local casted = self:GetSpellCastCount(rule.spellID)
     rule.completed = casted >= (rule.count or 1)
   end
+  return rule.completed
 end
 
--- Evaluar si toda la tarea está completa
+--[[ Evaluar si toda la tarea está completa
 function CounterIt:EvaluateTaskCompletion(name, task)
   if not task.rules then
     task.completed = false
@@ -32,10 +33,66 @@ function CounterIt:EvaluateTaskCompletion(name, task)
   for _, rule in ipairs(task.rules) do
     if not rule.completed then
       allCompleted = false
+      if task.completed then
+          self:Debug("EvaluateTaskCompletion; fail", name, task.type)
+      end
       break
     end
   end
   task.completed = allCompleted
+end
+]]--
+
+function CounterIt:CheckRuleCompletion(rule, task)
+  local progress = rule.progress or 0
+  local required = rule.count or task.goal
+
+  if rule.type == "spell" or rule.type == "manual" then
+    if progress >= required then
+      rule.completed = true
+    end
+  elseif rule.type == "quest" and rule.questID then
+    if C_QuestLog.IsQuestFlaggedCompleted(rule.questID) or C_QuestLog.ReadyForTurnIn(rule.questID) then
+      rule.completed = true
+    end
+  end
+end
+
+-- Evalúa si una tarea debe considerarse completada
+function CounterIt:EvaluateTaskCompletion(name, task)
+  if not task.rules then
+    task.completed = false
+    return
+  end
+
+  local hasCompletionRules = false      -- ¿Hay reglas marcadas como 'completion'?
+  local allCompletionPassed = true      -- ¿Están todas esas reglas completadas?
+
+  -- Recorremos las reglas buscando solo aquellas con role = "completion"
+  for _, rule in ipairs(task.rules) do
+    if rule.role == "completion" then
+      hasCompletionRules = true
+      if not rule.completed then
+        allCompletionPassed = false     -- Una no completada => no se puede marcar la tarea como terminada
+      end
+    end
+  end
+
+  if hasCompletionRules then
+    -- Si hay reglas específicas de finalización, usamos solo esas para decidir
+    task.completed = allCompletionPassed
+  else
+    -- Si no hay reglas de 'completion', aplicamos la lógica anterior (todas deben estar completas)
+    local allRulesComplete = true
+    for _, rule in ipairs(task.rules) do
+      if not rule.completed then
+        allRulesComplete = false
+        self:Debug("EvaluateTaskCompletion; fail", name, rule.type)
+        break
+      end
+    end
+    task.completed = allRulesComplete
+  end
 end
 
 -- Actualizar el progreso de una tarea (contadores, reglas, estado)
@@ -46,12 +103,10 @@ function CounterIt:UpdateTaskProgress(name, task, reset)
   if task.rules then
     for _, rule in ipairs(task.rules) do
       self:EvaluateRule(name, task, rule)
-      if reset then
-          rule.completed = false
-      end
     end
   end
   self:EvaluateTaskCompletion(name, task)
+  return task.completed
 end
 
 -- Agregar regla de tipo misión
@@ -87,13 +142,15 @@ end
 
 -- Obtener progreso de una regla
 function CounterIt:GetRuleProgress(task, rule)
+  if not task then return -1 end
+
   local name = task.description
   local count = getCounters()[name] or 0
 
   if rule.type == "manual" or rule.type == "petcapture" then
     return count
   elseif rule.type == "quest" then
-    return C_QuestLog.ReadyForTurnIn(rule.questID) or C_QuestLog.IsQuestFlaggedCompleted(rule.questID) and task.goal or 0
+    return (C_QuestLog.ReadyForTurnIn(rule.questID) or C_QuestLog.IsQuestFlaggedCompleted(rule.questID)) and task.goal or 0
   elseif rule.type == "item" then
     return self:HasItem(rule.itemID) and task.goal or 0
   elseif rule.type == "spell" then
@@ -104,6 +161,8 @@ end
 
 -- Obtener el mayor progreso entre todas las reglas
 function CounterIt:GetTaskProgress(task)
+  if not task then return -1 end
+
   local maxProgress = 0
   for _, rule in ipairs(task.rules or {}) do
     local current = self:GetRuleProgress(task, rule)

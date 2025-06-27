@@ -6,6 +6,8 @@ local L = LibStub("AceLocale-3.0"):GetLocale("CounterIt")
 local spellCasts = {}
 local pendingSpellName
 local lastInventory = {}
+local hasScannedInventory = false
+local processedItems = {}
 
 -----------------------------------------------------
 -- REGISTRO DE EVENTOS USANDO ACEEVENT
@@ -70,20 +72,62 @@ end
 
 ]]--
 function CounterIt:OnEnable()
+  if self._eventsRegistered then
+    self:Debug("CounterIt:OnEnable")
+    return
+  end
+  
+  self._eventsRegistered = true
+  
   self:RegisterEvent("PET_BATTLE_CAPTURED")
+  
   self:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
   self:RegisterEvent("UNIT_SPELLCAST_SENT")
   self:RegisterEvent("UNIT_SPELLCAST_STOP")
+
+  self:RegisterEvent("PLAYER_ENTERING_WORLD")  
+  
+  self:RegisterEvent("UNIT_QUEST_LOG_CHANGED")
+  self:RegisterEvent("QUEST_WATCH_UPDATE")
+  self:RegisterEvent("QUEST_LOG_UPDATE")
   self:RegisterEvent("QUEST_ACCEPTED")
+
   self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-  self:RegisterEvent("UNIT_INVENTORY_CHANGED") -- NUEVO
+  
+  self:RegisterEvent("UNIT_INVENTORY_CHANGED")
+  self:RegisterEvent("BAG_UPDATE_DELAYED")
+  
+  self:RegisterEvent("ACCOUNT_CHARACTER_CURRENCY_DATA_RECEIVED")
 
-  self:CheckTriggersFromActiveQuests()
+--  self:CheckTriggersFromActiveQuests()
 
-  self:CheckQuestRulesForActiveTasks()
+end
 
-  self:CheckAutoTriggersOnLogin()
+function CounterIt:OnDisable()
+  if self._eventsRegistered then
+  
+    self:UnregisterEvent("PET_BATTLE_CAPTURED")
+  
+    self:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+    self:UnregisterEvent("UNIT_SPELLCAST_SENT")
+    self:UnregisterEvent("UNIT_SPELLCAST_STOP")
 
+    self:UnregisterEvent("PLAYER_ENTERING_WORLD")  
+  
+    self:UnregisterEvent("UNIT_QUEST_LOG_CHANGED")
+    self:UnregisterEvent("QUEST_WATCH_UPDATE")
+    self:UnregisterEvent("QUEST_LOG_UPDATE")
+    self:UnregisterEvent("QUEST_ACCEPTED")
+
+    self:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+  
+    self:UnregisterEvent("UNIT_INVENTORY_CHANGED")
+    self:UnregisterEvent("BAG_UPDATE_DELAYED")
+  
+    self:UnregisterEvent("ACCOUNT_CHARACTER_CURRENCY_DATA_RECEIVED")
+  end
+  
+  self._eventsRegistered = false
 end
 
 -----------------------------------------------------
@@ -100,58 +144,192 @@ function CounterIt:UNIT_SPELLCAST_SENT(unit, _, spellID, spellName)
   end
 end
 
-function CounterIt:UNIT_SPELLCAST_SUCCEEDED(unit, _, spellID, spellName)
-  if unit == "player" then
+--[[
+  https://warcraft.wiki.gg/wiki/UNIT_SPELLCAST_SUCCEEDED
+  Payload
+    unitTarget
+        string : UnitId
+    castGUID
+        string
+    spellID
+        number
+  ]]--
+function CounterIt:UNIT_SPELLCAST_SUCCEEDED(unitTarget, castGUID, spellID, spellName)
+  if unitTarget == "player" then
     spellCasts[spellID] = (spellCasts[spellID] or 0) + 1
     self:CheckSpellCast(spellID, spellName)
   end
 end
 
-function CounterIt:UNIT_SPELLCAST_STOP(unit)
-  if unit == "player" then
-    self:CheckSpellCast(nil, pendingSpellName)
+--[[
+  https://warcraft.wiki.gg/wiki/UNIT_SPELLCAST_STOP
+  Payload
+    unitTarget
+        string : UnitId
+    castGUID
+        string
+    spellID
+        number
+  ]]--
+function CounterIt:UNIT_SPELLCAST_STOP(unitTarget, castGUID, spellID)
+  if unitTarget == "player" then
+    self:CheckSpellCast(spellID, pendingSpellName)
     pendingSpellName = nil
   end
 end
 
+--[[
+  https://warcraft.wiki.gg/wiki/PLAYER_ENTERING_WORLD
+  Payload
+    isInitialLogin
+        boolean - True whenever the character logs in. This includes logging out to character select and then logging in again.
+    isReloadingUi
+        boolean
+  ]]--
+function CounterIt:PLAYER_ENTERING_WORLD(isLogin, isReload)
+  if self._enteredWorldTime and (GetTime() - self._enteredWorldTime < 5) then
+    --self:Debug("Ignorando llamada duplicada de PLAYER_ENTERING_WORLD")
+    return
+  end
+  self._enteredWorldTime = GetTime()
+  
+  if isLogin or isReload then
+    self:Debug("PLAYER_ENTERING_WORLD")
+    --print("loaded the UI")
+    self:CheckAutoTriggersOnLogin()
+    if not hasScannedInventory then
+      self:ScanInventoryForAutoTriggers()
+      hasScannedInventory = true
+    end
+    self:CheckQuestRulesForActiveTasks()
+  else
+  --print("zoned between map instances")
+  end
+end
+
+--[[
+  https://warcraft.wiki.gg/wiki/UNIT_QUEST_LOG_CHANGED
+  Payload
+    unitTarget
+        string : UnitId
+  ]]--
+function CounterIt:UNIT_QUEST_LOG_CHANGED(unitTarget)
+  self:Debug("UNIT_QUEST_LOG_CHANGED")
+  self:CheckQuestRulesForActiveTasks()
+end
+
+--[[
+  https://warcraft.wiki.gg/wiki/QUEST_WATCH_UPDATE
+  Payload
+    questID
+        number
+  ]]--
+function CounterIt:QUEST_WATCH_UPDATE(questID)
+  self:Debug("QUEST_WATCH_UPDATE")
+  self:CheckQuestRulesForActiveTasks()
+  self:EvaluateQuestRules(questID)
+end
+
+--[[
+  https://warcraft.wiki.gg/wiki/QUEST_LOG_UPDATE
+  ]]--
+function CounterIt:QUEST_LOG_UPDATE()
+  self:Debug("QUEST_LOG_UPDATE")
+  self:CheckQuestRulesForActiveTasks()
+end
+
+--[[
+  https://warcraft.wiki.gg/wiki/QUEST_ACCEPTED
+  QUEST_ACCEPTED: [questLogIndex,] questId
+  ]]--
 function CounterIt:QUEST_ACCEPTED(questID)
   local taskOrTemplate = self.AutoTrigger and self.AutoTrigger:GetTaskFromEvent("QUEST_ACCEPTED", questID)
   if taskOrTemplate then
     self:HandleAutoTrigger(taskOrTemplate)
   end
+  self:EvaluateQuestRules(questID)
 end
 
+--[[
+  https://warcraft.wiki.gg/wiki/BAG_UPDATE_DELAYED  
+  ]]--
+function CounterIt:BAG_UPDATE_DELAYED()
+  self.processedItemTriggers = self.processedItemTriggers or {}
+
+  for itemID, _ in pairs(self.processedItemTriggers) do
+    if not self:HasItem(itemID) then
+      self:Debug("ItemID", itemID, "ya no está en las bolsas. Trigger reiniciado.")
+      self.processedItemTriggers[itemID] = nil
+    end
+  end
+end
+
+--[[
+  https://warcraft.wiki.gg/wiki/COMBAT_LOG_EVENT_UNFILTERED
+    timestamp
+        number - Unix Time in seconds with milliseconds precision, for example 1555749627.861. Similar to time() and can be passed as the second argument of date().
+    subevent
+        string - The combat log event, for example SPELL_DAMAGE.
+    hideCaster
+        boolean - Returns true if the source unit is hidden (an empty string).[1]
+    guid
+        string - Globally unique identifier for units (NPCs, players, pets, etc), for example "Creature-0-3113-0-47-94-00003AD5D7".
+    name
+        string - Name of the unit.
+    flags
+        number - Contains the flag bits for a unit's type, controller, reaction and affiliation. For example 68168 (0x10A48): Unit is the current target, is an NPC, the controller is an NPC, reaction is hostile and affiliation is outsider.
+    raidFlags
+        number - Contains the raid flag bits for a unit's raid target icon. For example 64 (0x40): Unit is marked with cross.
+  
+  ]]--
 function CounterIt:COMBAT_LOG_EVENT_UNFILTERED()
   local _, subevent, _, _, _, _, _, _, _, _, _, spellID, spellName = CombatLogGetCurrentEventInfo()
   if subevent == "SPELL_CAST_SUCCESS" then
     self:EvaluateSpellRules(spellID, spellName)
+  else
+    --CounterIt:PLAYER_ENTERING_WORLD(true, true)
   end
 end
 
-function CounterIt:UNIT_INVENTORY_CHANGED(unit)
-  if unit == "player" then
+--[[
+  https://warcraft.wiki.gg/wiki/UNIT_INVENTORY_CHANGED
+  ]]--
+function CounterIt:UNIT_INVENTORY_CHANGED(unitTarget)
+  self:Debug("UNIT_INVENTORY_CHANGED")
+  if unitTarget and unitTarget ~= "player" then return end
+  if unitTarget == "player" then
     self:ScanInventoryForNewItems()
   end
+end
+
+--[[
+  https://warcraft.wiki.gg/wiki/ACCOUNT_CHARACTER_CURRENCY_DATA_RECEIVED
+  ]]--
+function CounterIt:ACCOUNT_CHARACTER_CURRENCY_DATA_RECEIVED()
+  self:Debug("ACCOUNT_CHARACTER_CURRENCY_DATA_RECEIVED")
+  self:CheckQuestRulesForActiveTasks()
 end
 
 -----------------------------------------------------
 -- FUNCIONES DE EVALUACIÓN DE REGLAS
 -----------------------------------------------------
 
+
 function CounterIt:CheckSpellCast(spellID, spellName)
   if spellID then
-  --  print(format(L["SPELLCAST_ID"], tostring(spellID or "n/a")))
+  --  self:Debug(format(L["SPELLCAST_ID"], tostring(spellID or "n/a")))
   end
   if spellName then
-  --  print(format(L["SPELLCAST_NAME"], tostring(spellName or "n/a")))
+  --  self:Debug(format(L["SPELLCAST_NAME"], tostring(spellName or "n/a")))
   end
 --print("[DEBUG] Ejecutando CheckSpellCast con spellID:", spellID, "spellName:", spellName)
   if spellID then
-  --  print(format(L["SPELLCAST_ID"], tostring(spellID or "n/a")))
+  --  self:Debug(format(L["SPELLCAST_ID"], tostring(spellID or "n/a")))
   end
   if spellName then
-  --  print(format(L["SPELLCAST_NAME"], tostring(spellName or "n/a")))
+  --  self:Debug(format(L["SPELLCAST_NAME"], tostring(spellName or "n/a")))
   end
+  local needRefresh = false
   for name, task in pairs(self.globalTasks()) do
     if task.active and not task.completed and task.rules then
       for _, rule in ipairs(task.rules) do
@@ -165,18 +343,39 @@ function CounterIt:CheckSpellCast(spellID, spellName)
 
           if match then
             rule.progress = (rule.progress or 0) + 1
+            self:CheckRuleCompletion(rule, task)
             self:EvaluateTaskCompletion(name, task)
             print(format(L["SPELLCAST_MATCH"], tostring(name)))
+            needRefresh = true
           end
         end
       end
     end
   end
-  self:RenderActiveTasks()
+  if needRefresh then
+    self:RenderActiveTasks()
+  end
 end
 
 function CounterIt:EvaluateSpellRules(spellID, spellName)
   self:CheckSpellCast(spellID, spellName)
+end
+
+function CounterIt:EvaluateQuestRules(questID)
+  for name, task in pairs(self.globalTasks()) do
+    if task.active and not task.completed and task.rules then
+      for _, rule in ipairs(task.rules) do
+        if rule.type == "quest" then
+          if tonumber(rule.questID) and tonumber(questID) and tonumber(rule.questID) == tonumber(questID) then
+            rule.progress = (rule.progress or 0) + 1
+            self:EvaluateTaskCompletion(name, task)
+            print(format(L["QUEST_MATCH"], tostring(questID)))
+          end
+        end
+      end
+    end
+  end
+  self:RenderActiveTasks()  
 end
 
 function CounterIt:HandlePetBattleCaptured()
@@ -196,6 +395,7 @@ function CounterIt:HandlePetBattleCaptured()
 end
 
 function CounterIt:ScanInventoryForNewItems()
+  Print("ScanInventoryForNewItems");
   for bag = 0, NUM_BAG_SLOTS do
     for slot = 1, GetContainerNumSlots(bag) do
       local itemID = GetContainerItemID(bag, slot)
@@ -209,10 +409,13 @@ function CounterIt:ScanInventoryForNewItems()
 end
 
 function CounterIt:OnItemReceived(itemID, count)
+  Print("OnItemReceived", itemID, count)
   -- Regla global primero (activación automática)
-  local taskOrTemplate = self.AutoTrigger and self.AutoTrigger:GetTaskFromEvent("ITEM_RECEIVED", itemID)
-  if taskOrTemplate then
-    self:HandleAutoTrigger(taskOrTemplate)
+  local templates = self.AutoTrigger and self.AutoTrigger:GetTaskFromEvent("ITEM_RECEIVED", itemID)
+  if templates then
+    for _, templateID in ipairs(templates) do    
+      self:HandleAutoTrigger(templateID)
+    end
   end
 
   -- Evaluación de tareas activas con regla "item"
@@ -222,7 +425,7 @@ function CounterIt:OnItemReceived(itemID, count)
         if rule.type == "item" and tonumber(rule.itemID) == itemID then
           rule.progress = (rule.progress or 0) + count
           self:EvaluateTaskCompletion(name, task)
-          print(format("Item %d recibido para tarea: %s", itemID, name))
+          self:Print(format("Item %d recibido para tarea: %s", itemID, name))
         end
       end
     end
@@ -235,13 +438,15 @@ function CounterIt:CheckAutoTriggersOnLogin()
     local questCount = 0
     local rules = self.AutoTrigger.Rules.QUEST_ACCEPTED or {}
     for questID, templateID in pairs(rules) do
-        if C_QuestLog.IsOnQuest(questID) or C_QuestLog.ReadyForTurnIn(questID) or C_QuestLog.IsQuestFlaggedCompleted(questID) then
+        if C_QuestLog.IsOnQuest(questID) 
+          or C_QuestLog.ReadyForTurnIn(questID) 
+          or C_QuestLog.IsQuestFlaggedCompleted(questID) then
             questCount = questCount + 1
             self:HandleAutoTrigger(templateID)
         end
     end
   if questCount > 0 then
-    self:Print('CheckAutoTriggersOnLogin', questCount)
+    self:Debug('CheckAutoTriggersOnLogin', questCount)
   end
 end
 
@@ -267,7 +472,7 @@ function CounterIt:CheckTriggersFromActiveQuests()
     end
   end
   if questCount > 0 then
-    self:Print('CheckTriggersFromActiveQuests', questCount)
+    self:Debug('CheckTriggersFromActiveQuests', questCount)
   end
 end
 
@@ -277,16 +482,54 @@ function CounterIt:CheckQuestRulesForActiveTasks()
   for name, task in pairs(tasks) do
     if task.active and task.rules then
       for _, rule in ipairs(task.rules) do
-        if rule.type == "quest" and rule.questID and C_QuestLog.IsQuestFlaggedCompleted(rule.questID) then
-          questCount = questCount + 1
-          rule.progress = rule.count or 1
+        if rule.type == "quest" and rule.questID then
+          if C_QuestLog.ReadyForTurnIn(rule.questID) or C_QuestLog.IsQuestFlaggedCompleted(rule.questID) then
+            questCount = questCount + 1
+            rule.progress = rule.count or 1
+          end
         end
       end
       self:EvaluateTaskCompletion(name, task)
     end
   end
   if questCount > 0 then
-    self:Print('CheckQuestRulesForActiveTasks', questCount)
+    self:Debug('CheckQuestRulesForActiveTasks', questCount)
+  end
+end
+
+-- Escanear inventario al entrar en el mundo y activar tareas por plantillas si hay ítems presentes
+function CounterIt:ScanInventoryForAutoTriggers()
+  if not self.AutoTrigger or not self.AutoTrigger.Rules["ITEM_RECEIVED"] then return end
+  self:Debug("ScanInventoryForAutoTriggers")
+
+  self.processedItemTriggers = self.processedItemTriggers or {}
+
+  for itemID, _ in pairs(self.AutoTrigger.Rules["ITEM_RECEIVED"]) do
+    self:Debug("ITEM_RECEIVED", itemID)
+    if self:HasItem(itemID) and not self.processedItemTriggers[itemID] then
+      local templates = self.AutoTrigger:GetTaskFromEvent("ITEM_RECEIVED", itemID)
+      if templates then
+        for _, templateID in ipairs(templates) do
+          self:HandleAutoTrigger(templateID)
+        end
+        
+        self.processedItemTriggers[itemID] = true
+      end
+    end
+  end
+end
+
+function CounterIt:UpdateTasks()
+  local tasks = self.globalTasks()
+  local taskCount = 0
+  for name, task in pairs(tasks) do
+    local bCompleted = self:UpdateTaskProgress(name, task, false)
+    if bCompleted then
+      taskCount = taskCount + 1
+    end
+  end
+  if taskCount > 0 then
+    self:Print('UpdateTasks', taskCount)
   end
 end
 
@@ -298,6 +541,12 @@ SLASH_CITSIMULATE1 = "/citsim"
 SlashCmdList["CITSIMULATE"] = function()
   CounterIt:HandlePetBattleCaptured()
   print(L["SIMULATE_PET"])
+end
+
+SLASH_CITUPDATE1 = "/citupdate"
+SlashCmdList["CITSIMULATE"] = function()
+  CounterIt:UpdateTasks()
+  print("SLASH_CITUPDATE1")
 end
 
 -- Obtener cantidad de veces que se lanzó un hechizo

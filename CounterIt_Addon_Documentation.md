@@ -171,3 +171,48 @@ Counter-It/
 - Mejor selector visual de iconos con previsualización.
 - Reglas encadenadas, múltiples condiciones lógicas.
 - Integración con la UI de seguimiento de misiones.
+
+## 🛠️ Panel de Configuración
+
+Desde ahora, Counter-It incluye un panel de configuración accesible desde el menú de interfaz del juego (AddOns), basado en **AceConfig**.
+
+### Opciones disponibles:
+
+* **Activar/desactivar triggers automáticos**
+  Permite que el addon active tareas automáticamente según condiciones del juego.
+
+* **Activar/desactivar seguimiento de tareas**
+  Controla si las tareas activas se muestran en el panel de seguimiento.
+
+* **Gestión de perfiles**
+  Cambiar entre configuraciones por personaje o globales. (Usa AceDBOptions)
+
+### Implementación:
+
+* Se define en `config.lua`
+* Se inicializa en `CounterIt:OnInitialize()`
+* Utiliza:
+
+  * `AceConfig-3.0`
+  * `AceConfigDialog-3.0`
+  * `AceDBOptions-3.0`****
+
+### Traducción (localización):
+
+Las siguientes claves deben añadirse a los archivos `enUS.lua` y `esES.lua`:
+
+```lua
+L["GENERAL_OPTIONS"] = "Opciones generales"
+L["ENABLE_TRIGGERS"] = "Activar desencadenantes automáticos"
+L["ENABLE_TRIGGERS_DESC"] = "Permite que Counter-It active tareas automáticamente según condiciones del juego."
+L["ENABLE_TRACKING"] = "Activar seguimiento de tareas"
+L["ENABLE_TRACKING_DESC"] = "Permite que las tareas activas se muestren y actualicen en el panel de seguimiento."
+```
+
+---
+
+## 🔄 Mejoras en el Gestor de Tareas
+
+* Ahora se muestran **todas las tareas**, no solo las pausadas.
+* Cada tarea incluye un **check-box** para activarla o pausarla directamente.
+* El estado de completado se recalcula automáticamente al activar una tarea (por ejemplo, si está basada en una misión ya completada, se marcará como terminada inmediatamente).

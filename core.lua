@@ -6,6 +6,13 @@ local L = LibStub("AceLocale-3.0"):GetLocale("CounterIt")
 local globalTasks     -- nivel cuenta
 local charCounters    -- nivel personaje
 
+CounterIt.debugMode = false  -- o true para depurar
+function CounterIt:Debug(...)
+  if self.debugMode then
+    print("|cffffcc00[CounterIt DEBUG]|r", ...)
+  end
+end
+
 -- Inicialización
 function CounterIt:OnInitialize()
   -- DB global (por cuenta)
@@ -25,6 +32,8 @@ function CounterIt:OnInitialize()
     },
   })
 
+  self:InitConfig()
+
   globalTasks = self.db.global.tasks
   charCounters = self.charDb.char.counters
 
@@ -32,6 +41,7 @@ function CounterIt:OnInitialize()
   self:RegisterChatCommand("counterit", "OpenTaskManager")
   self:RegisterChatCommand("ci", "OpenTaskManager")
   self:RegisterChatCommand("cit", "OpenActiveTasksMonitor")
+  self:RegisterChatCommand("citreset", "ResetActiveTasks")
 
   -- Minimapa y DataBroker
   local LDB = LibStub("LibDataBroker-1.1"):NewDataObject("CounterIt", {
@@ -57,6 +67,25 @@ function CounterIt:OnInitialize()
   self:Print(L["LOADED_MSG"])
 end
 
+function CounterIt:ResetActiveTasks()
+  -- Cerrar el panel de seguimiento de tareas activas
+  if self.activeMonitorFrame and self.activeMonitorFrame:IsShown() then
+    self.activeMonitorFrame:Hide()
+  end
+
+  -- Cerrar el panel de tareas en pausa
+  if self.taskManagerFrame and self.taskManagerFrame:IsShown() then
+    self.taskManagerFrame:Hide()
+  end
+
+  if CounterIt.db then
+    CounterIt.db.tasks = {}
+    print("CounterIt: Todas las tareas han sido eliminadas.")
+  else
+    print("CounterIt: No se pudo acceder a los datos.")
+  end
+end
+  
 function CounterIt:HandleAutoTrigger(id)
     if self:IsTemplate(id) then
         local task = self:CreateTaskFromTemplate(id)
