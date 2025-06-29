@@ -2,7 +2,7 @@ local CounterIt = LibStub("AceAddon-3.0"):GetAddon("CounterIt")
 
 local AceGUI = LibStub("AceGUI-3.0")
 
-local L = LibStub("AceLocale-3.0"):GetLocale("CounterIt")
+local L = LibStub("AceLocale-3.0"):GetLocale("CounterIt") 
 
 function CounterIt:SaveTaskManagerFrameState()
   if not self.taskManagerFrame or not self.taskManagerFrame.frame then return end
@@ -25,7 +25,7 @@ local TASKMANAGER_SCROLL_OFFSET = 220
 local TASKMANAGER_SCROLL_MIN = 100
 local BUTTON_WIDTH = 100
 
--- Reestructurado con diseño Fill y separación en top/bottom
+-- Paenl Gestor de tareas
 function CounterIt:OpenTaskManager()
   if self.taskManagerFrame then
     self.taskManagerFrame:Release()
@@ -38,6 +38,7 @@ function CounterIt:OpenTaskManager()
   frame:SetLayout("Fill")
   frame.frame:SetWidth(pos.width or TASKMANAGER_DEFAULT_WIDTH)
   frame.frame:SetHeight(pos.height or TASKMANAGER_DEFAULT_HEIGHT)
+  frame.frame:SetFrameStrata("MEDIUM")
 
   frame:SetPoint("CENTER", UIParent, "BOTTOMLEFT", pos.x or 100, pos.y or 100)
   self.taskManagerFrame = frame
@@ -125,10 +126,10 @@ function CounterIt:OpenTaskManager()
   activateButton:SetText(L["ACTIVATE"])
   activateButton:SetWidth(BUTTON_WIDTH)
   activateButton:SetCallback("OnClick", function()
-    if self.selectedPausedTask then
+    if self.selectedTaskID then
       local tasks = self.globalTasks()
-      tasks[self.selectedPausedTask].active = true
-      self.selectedPausedTask = nil
+      tasks[self.selectedTaskID].active = true -- taskID
+      self.selectedTaskID = nil
       self:RenderAllTasks()
       if self.activeMonitorFrame then self:RenderActiveTasks() end
     end
@@ -139,8 +140,8 @@ function CounterIt:OpenTaskManager()
   editButton:SetText(L["EDIT"])
   editButton:SetWidth(BUTTON_WIDTH)
   editButton:SetCallback("OnClick", function()
-    if self.selectedPausedTask then
-      self:OpenTaskEditor(self.selectedPausedTask)
+    if self.selectedTaskID then
+      self:OpenTaskEditor(self.selectedTaskID) -- todo taskID
     end
   end)
   bottomGroup:AddChild(editButton)
@@ -149,8 +150,10 @@ function CounterIt:OpenTaskManager()
   deleteButton:SetText(L["DELETE"])
   deleteButton:SetWidth(BUTTON_WIDTH)
   deleteButton:SetCallback("OnClick", function()
-    if self.selectedPausedTask then
-      local taskName = self.selectedPausedTask
+    if self.selectedTaskID then
+      local tasks = self.globalTasks()
+      local taskID = self.selectedTaskID -- taskID
+      local taskName = tasks[taskID].description
       StaticPopupDialogs["COUNTERIT_CONFIRM_DELETE"] = {
         text = L["CONFIRM_DELETE_TASK"],
         button1 = L["YES"],
@@ -158,9 +161,9 @@ function CounterIt:OpenTaskManager()
         OnAccept = function()
           local tasks = self.globalTasks()
           local counters = self.charCounters()
-          tasks[taskName] = nil
-          counters[taskName] = nil
-          self.selectedPausedTask = nil
+          tasks[taskID] = nil -- taskID
+          counters[taskID] = nil -- taskID
+          self.selectedTaskID = nil
           self:RenderAllTasks()
         end,
         timeout = 0,
@@ -175,32 +178,33 @@ function CounterIt:OpenTaskManager()
 
   containerGroup:AddChild(bottomGroup)
 
-  -- Botón de exportar/importar
+  -- BotÃ³n de exportar/importar
   self:AddExportImportButton(bottomGroup)
 end
 
--- Mostrar todas las tareas con checkbox de activación
+-- Mostrar todas las tareas con checkbox de activaciÃ³n
 function CounterIt:RenderAllTasks()
   if not self.pausedTasksScrollFrame then return end
 
   local group = self.pausedTasksScrollFrame
   group:ReleaseChildren()
 
-  for name, task in pairs(self.globalTasks()) do
+  local tasks = self.globalTasks()
+  for taskID, task in pairs(tasks) do
     local row = AceGUI:Create("SimpleGroup")
     row:SetLayout("Flow")
     row:SetFullWidth(true)
     row:SetHeight(30)
 
-    -- Check de activación
+    -- Check de activaciÃ³n
     local check = AceGUI:Create("CheckBox")
     check:SetValue(task.active)
     check:SetWidth(24)
     check:SetCallback("OnValueChanged", function(widget, event, value)
       task.active = value
-      self:UpdateTaskProgress(name, task)
+      self:UpdateTaskProgress(taskID, task) -- name
       if self.activeMonitorFrame then 
-        self:RenderActiveTasks() 
+        self:RenderActiveTasks()
       end
     end)
     row:AddChild(check)
@@ -219,72 +223,24 @@ function CounterIt:RenderAllTasks()
     label:SetFontObject(GameFontNormal)
     label:SetWidth(260)
     label:SetHeight(30)
-    label:SetColor(self.selectedPausedTask == name and 1 or 1, self.selectedPausedTask == name and 1 or 1, self.selectedPausedTask == name and 0 or 1)
+    label:SetColor(self.selectedTaskID == taskID and 1 or 1, self.selectedTaskID == taskID and 1 or 1, self.selectedTaskID == taskID and 0 or 1)
 
     label:SetCallback("OnEnter", function(widget)
       GameTooltip:SetOwner(widget.frame, "ANCHOR_RIGHT")
       GameTooltip:SetText(format(L["TASK_TOOLTIP_OBJECTIVE"], task.description, task.goal))
+      if task.hint then
+        GameTooltip:AddLine(task.hint, 1, 0.9, 0)
+      end
       GameTooltip:Show()
     end)
     label:SetCallback("OnLeave", GameTooltip_Hide)
     label:SetCallback("OnClick", function()
-      self.selectedPausedTask = name
+      self.selectedTaskID = taskID -- name
       self:RenderAllTasks()
     end)
 
     row:AddChild(label)
     group:AddChild(row)
-  end
-
-  -- Espaciador inferior
-  local spacer = AceGUI:Create("Label")
-  spacer:SetFullWidth(true)
-  spacer:SetText(" ")
-  group:AddChild(spacer)
-end
-
--- Renderizar lista de tareas pausadas
-function CounterIt:nousar_RenderPausedTasks()
-  if not self.pausedTasksScrollFrame then return end
-
-  local group = self.pausedTasksScrollFrame
-  group:ReleaseChildren()
-
-  for name, task in pairs(self.globalTasks()) do
-    if not task.active then
-      local row = AceGUI:Create("SimpleGroup")
-      row:SetLayout("Flow")
-      row:SetFullWidth(true)
-      row:SetHeight(30)
-
-      if task.icon then
-        local icon = AceGUI:Create("Label")
-        icon:SetImage(task.icon, 24, 24)
-        icon:SetWidth(30)
-        row:AddChild(icon)
-      end
-
-      local label = AceGUI:Create("InteractiveLabel")
-      label:SetText( format( L["TASK_OBJECTIVE"], tostring(task.description), tonumber(task.goal) ) )
-      label:SetFontObject(GameFontNormal)
-      label:SetWidth(260)
-      label:SetHeight(30)
-      label:SetColor(self.selectedPausedTask == name and 1 or 1, self.selectedPausedTask == name and 1 or 1, self.selectedPausedTask == name and 0 or 1)
-
-      label:SetCallback("OnEnter", function(widget)
-        GameTooltip:SetOwner(widget.frame, "ANCHOR_RIGHT")
-        GameTooltip:SetText(format(L["TASK_TOOLTIP_OBJECTIVE"], task.description, task.goal))
-        GameTooltip:Show()
-      end)
-      label:SetCallback("OnLeave", GameTooltip_Hide)
-      label:SetCallback("OnClick", function()
-        self.selectedPausedTask = name
-        self:RenderAllTasks()
-      end)
-
-      row:AddChild(label)
-      group:AddChild(row)
-    end
   end
 
   -- Espaciador inferior
@@ -321,7 +277,7 @@ function CounterIt:AddTopButtons(parentFrame)
   parentFrame:AddChild(row)
 end
 
--- Botón de compartir tareas
+-- BotÃ³n de compartir tareas
 function CounterIt:AddExportImportButton(parentFrame)
   local shareButton = AceGUI:Create("Button")
   shareButton:SetText(L["EXPORT_IMPORT"])
@@ -379,7 +335,7 @@ function CounterIt:OpenActiveTasksMonitor()
   })
   frame:SetBackdropColor(0, 0, 0, 0.7)
 
-  -- Título
+  -- TÃ­tulo
   local title = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
   title:SetText(L["ACTIVE_MONITOR_TITLE"])
   title:SetPoint("TOP", 0, -10)
@@ -410,7 +366,7 @@ function CounterIt:OpenActiveTasksMonitor()
 
   self.activeMonitorFrame = frame
 
-  -- Añadir grip para redimensionar
+  -- AÃ±adir grip para redimensionar
   local resize = CreateFrame("Frame", nil, frame)
   resize:SetSize(16, 16)
   resize:SetPoint("BOTTOMRIGHT")
@@ -431,7 +387,7 @@ function CounterIt:OpenActiveTasksMonitor()
   self:RenderActiveTasks()
 end
 
--- Mostrar lista de tareas activas con botones de interacción
+-- Mostrar lista de tareas activas con botones de interacciÃ³n
 function CounterIt:RenderActiveTasks()
   if self.activeTasksFrame then
     self.activeTasksFrame:Hide()
@@ -441,7 +397,7 @@ function CounterIt:RenderActiveTasks()
 
   if not self.activeMonitorFrame or not self.activeMonitorFrame.scrollContent then
     -- No hay contenedor visible, no renderizamos nada
-    --debug:print("[Counter-It] RenderActiveTasks(): no se encontró un contenedor visible. Abortando.")
+    --self:Debug("[Counter-It] RenderActiveTasks(): no se encontrÃ³ un contenedor visible. Abortando.")
     return
   end
 
@@ -458,11 +414,13 @@ function CounterIt:RenderActiveTasks()
   local counters = self.charCounters()
 
   local lastRow
-  for name, task in pairs(tasks) do
+  for taskID, task in pairs(tasks) do
     if task.active then
       local row = CreateFrame("Frame", nil, container)
       row:SetSize(container:GetWidth(), 28)
       row:SetPoint("TOPLEFT", lastRow or container, lastRow and "BOTTOMLEFT" or "TOPLEFT", 0, lastRow and -4 or 0)
+
+      local hasManualRule = self:TaskAllowsManualControl(task)
 
       -- Botones: -, +, R, P
       local function createButton(label, xOffset, onClick)
@@ -475,25 +433,29 @@ function CounterIt:RenderActiveTasks()
       end
 
       local btnDec = createButton("-", 4, function()
-        counters[name] = math.max(0, (counters[name] or 0) - 1)
-        self:UpdateTaskProgress(name, task)
+        counters[taskID] = math.max(0, (counters[taskID] or 0) - 1)
+        self:UpdateTaskProgress(taskID, task)
         self:RenderActiveTasks()
       end)
+      btnDec:SetEnabled(hasManualRule)
 
       local btnInc = createButton("+", 32, function()
-        if (counters[name] or 0) < task.goal then
-          counters[name] = (counters[name] or 0) + 1
-          self:UpdateTaskProgress(name, task)
+        if (counters[taskID] or 0) < task.goal then
+          counters[taskID] = (counters[taskID] or 0) + 1
+          self:UpdateTaskProgress(taskID, task)
           self:RenderActiveTasks()
         end
       end)
+      btnInc:SetEnabled(hasManualRule)
 
       local btnReset = createButton("R", 60, function()
-        counters[name] = 0
+        counters[taskID] = 0
         task.completed = false
-        self:UpdateTaskProgress(name, task, true)
-        self:Print("Reset on", name)
-        self:RenderActiveTasks()
+        local bRefresh = self:UpdateTaskProgress(taskID, task, true)
+        if bRefresh then
+          self:Print("Reset on", taskID)
+          self:RenderActiveTasks()
+        end
       end)
 
       local btnPause = createButton("P", 88, function()
@@ -516,14 +478,14 @@ function CounterIt:RenderActiveTasks()
       local textCount = CreateFrame("Frame", nil, row)
       textCount:SetSize(50, 24)
       local label = textCount:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-      local progress = (counters[name] or 0)
+      local progress = (counters[taskID] or 0)
       progress = self:GetTaskProgress(task, progress)
       label:SetText(progress .. " / " .. task.goal)
       label:SetTextColor(task.completed and 0 or 1, task.completed and 1 or 1, 0)
       label:SetAllPoints(true)
       textCount:SetPoint("LEFT", icon, "RIGHT", 8, 0)
 
-      -- Descripción
+      -- DescripciÃ³n
       local desc = CreateFrame("Frame", nil, row)
       desc:SetSize(140, 24)
       local descLabel = desc:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -541,10 +503,10 @@ function CounterIt:RenderActiveTasks()
   container:SetHeight(totalHeight)
 end
 
-function CounterIt:RenderRules(rulesGroup, task, existingTaskName)
+function CounterIt:RenderRules(rulesGroup, task, taskID) -- existingTaskName
   rulesGroup:ReleaseChildren()
 
-  for i, rule in ipairs(task.rules or {}) do
+  for idx, rule in ipairs(task.rules or {}) do
     local ruleContainer = AceGUI:Create("SimpleGroup")
     ruleContainer:SetLayout("Flow")
     ruleContainer:SetFullWidth(true)
@@ -559,8 +521,8 @@ function CounterIt:RenderRules(rulesGroup, task, existingTaskName)
     editBtn:SetWidth(80)
     editBtn:SetCallback("OnClick", function()
       self:OpenRuleEditor(task, rule, function(updatedRule)
-        task.rules[i] = updatedRule
-        self:RenderRules(rulesGroup, task, existingTaskName)
+        task.rules[idx] = updatedRule
+        self:RenderRules(rulesGroup, task, taskID) -- existingTaskName
       end)
     end)
     ruleContainer:AddChild(editBtn)
@@ -570,7 +532,7 @@ function CounterIt:RenderRules(rulesGroup, task, existingTaskName)
     delBtn:SetWidth(80)
     delBtn:SetCallback("OnClick", function()
       table.remove(task.rules, i)
-      self:RenderRules(rulesGroup, task, existingTaskName)
+      self:RenderRules(rulesGroup, task, taskID) -- existingTaskName
     end)
     ruleContainer:AddChild(delBtn)
 
@@ -578,14 +540,15 @@ function CounterIt:RenderRules(rulesGroup, task, existingTaskName)
   end
 end
 
--- Editor de tareas personalizadas
-function CounterIt:OpenTaskEditor(existingTaskName)
+--- Editor de tareas personalizadas (existingTaskName)
+function CounterIt:OpenTaskEditor(taskID)
+  local existingTaskName = (taskID and self.globalTasks()[taskID])
   if self.taskEditor then
     self.taskEditor:ReleaseChildren()
     self.taskEditor:Show()
   else
     self.taskEditor = AceGUI:Create("Frame")
-    self.taskEditor:SetTitle(existingTaskName and L["EDIT_TASK"] or L["NEW_TASK"])
+    self.taskEditor:SetTitle( existingTaskName and L["EDIT_TASK"] or L["NEW_TASK"] )
     self.taskEditor:SetStatusText(L["DEFINE_TASK_DETAILS"])
     self.taskEditor:SetLayout("List")
     self.taskEditor:SetWidth(450)
@@ -596,14 +559,19 @@ function CounterIt:OpenTaskEditor(existingTaskName)
     end)
   end
 
+  local tasks = self.globalTasks()
+  local task = (taskID and tasks[taskID]) or {}
+
   local description = AceGUI:Create("EditBox")
   description:SetLabel(L["TASK_DESCRIPTION"])
   description:SetFullWidth(true)
+  description:SetText(task.description or "")
   self.taskEditor:AddChild(description)
 
   local objective = AceGUI:Create("EditBox")
   objective:SetLabel(L["TASK_GOAL"])
   objective:SetFullWidth(true)
+  objective:SetText(task.goal or "")
   objective:SetCallback("OnTextChanged", function(_, _, val)
     if not tonumber(val) then
       objective:SetText("")
@@ -614,6 +582,7 @@ function CounterIt:OpenTaskEditor(existingTaskName)
   local icon = AceGUI:Create("EditBox")
   icon:SetLabel(L["TASK_ICON_LABEL"])
   icon:SetFullWidth(true)
+  icon:SetText(task.icon or "")
   self.taskEditor:AddChild(icon)
 
   local iconSelectBtn = AceGUI:Create("Button")
@@ -626,15 +595,6 @@ function CounterIt:OpenTaskEditor(existingTaskName)
   end)
   self.taskEditor:AddChild(iconSelectBtn)
 
-  local task = {}
-  if existingTaskName and self.globalTasks()[existingTaskName] then
-    task = self.globalTasks()[existingTaskName]
-    if not task.rules then task.rules = {} end
-    description:SetText(task.description)
-    objective:SetText(task.goal)
-    icon:SetText(task.icon or "")
-  end
-
   -- Reglas
   local rulesHeader = AceGUI:Create("Label")
   rulesHeader:SetText(L["RULES"])
@@ -646,42 +606,7 @@ function CounterIt:OpenTaskEditor(existingTaskName)
   rulesGroup:SetFullHeight(true)
   self.taskEditor:AddChild(rulesGroup)
 
-  self:RenderRules(rulesGroup, task, existingTaskName)
-
---[[
-  for i, rule in ipairs(task.rules or {}) do
-    local ruleContainer = AceGUI:Create("SimpleGroup")
-    ruleContainer:SetLayout("Flow")
-    ruleContainer:SetFullWidth(true)
-
-    local ruleLabel = AceGUI:Create("Label")
-    ruleLabel:SetText(rule.type .. (rule.questID and ": " .. rule.questID or "") .. (rule.itemID and ": " .. rule.itemID or "") .. (rule.spellID and ": " .. rule.spellID or ""))
-    ruleLabel:SetWidth(200)
-    ruleContainer:AddChild(ruleLabel)
-
-    local editBtn = AceGUI:Create("Button")
-    editBtn:SetText(L["EDIT"])
-    editBtn:SetWidth(80)
-    editBtn:SetCallback("OnClick", function()
-      self:OpenRuleEditor(task, rule, function(updatedRule)
-        task.rules[i] = updatedRule
-        self:OpenTaskEditor(existingTaskName)
-      end)
-    end)
-    ruleContainer:AddChild(editBtn)
-
-    local delBtn = AceGUI:Create("Button")
-    delBtn:SetText(L["DELETE"])
-    delBtn:SetWidth(80)
-    delBtn:SetCallback("OnClick", function()
-      table.remove(task.rules, i)
-      self:OpenTaskEditor(existingTaskName)
-    end)
-    ruleContainer:AddChild(delBtn)
-
-    rulesGroup:AddChild(ruleContainer)
-  end
-]]--
+  self:RenderRules(rulesGroup, task, taskID) -- existingTaskName
 
   local addRuleButton = AceGUI:Create("Button")
   addRuleButton:SetText(L["NEW_RULE"])
@@ -690,7 +615,7 @@ function CounterIt:OpenTaskEditor(existingTaskName)
     self:OpenRuleEditor(task, nil, function(newRule)
       table.insert(task.rules, newRule)
 
-      self:RenderRules(rulesGroup, task, existingTaskName)
+      self:RenderRules(rulesGroup, task, taskID) -- existingTaskName
 
     end)
   end)
@@ -714,14 +639,19 @@ function CounterIt:OpenTaskEditor(existingTaskName)
       return
     end
 
-    local tasks = self.globalTasks()
-    tasks[desc] = {
+    local id = taskID or task.id or "custom-"..date("%Y%m%d-%H%M%S").."-"..math.random(10000,99999) 
+    tasks[id] = {
+      id = id,
       description = desc,
       goal = goal,
       icon = iconPath ~= "" and iconPath or nil,
       active = task.active or false,
       completed = task.completed or false,
       rules = task.rules or {},
+      hint = task.hint,
+      templateID = task.templateID,
+      url = task.url,
+      step = task.step,
     }
 
     self:Print(format(L["TASK_SAVED"], desc))
@@ -733,13 +663,17 @@ function CounterIt:OpenTaskEditor(existingTaskName)
 end
 
 -- Editor de reglas
+---Abre el panel de ediciÃ³n para una regla de una tarea.
+---@param task TaskData                      -- La tabla de la tarea a la que pertenece la regla.
+---@param existingRule? RuleData             -- La regla existente a editar (opcional). Si no se proporciona, se crea una nueva.
+---@param callback fun(rule: RuleData)       -- FunciÃ³n de retorno que recibe la regla final tras guardar.
 function CounterIt:OpenRuleEditor(task, existingRule, callback)
   local editor = AceGUI:Create("Frame")
   editor:SetTitle(existingRule and L["EDIT_RULE"] or L["NEW_RULE"])
   editor:SetStatusText(L["STATUSTEXT_NEW_RULE"])
   editor:SetLayout("List")
-  editor:SetWidth(300)
-  editor:SetHeight(200)
+  editor:SetWidth(350)
+  editor:SetHeight(250)
   editor:SetCallback("OnClose", function(widget) AceGUI:Release(widget) end)
 
   local typeDropdown = AceGUI:Create("Dropdown")
@@ -763,6 +697,50 @@ function CounterIt:OpenRuleEditor(task, existingRule, callback)
   end
   editor:AddChild(idBox)
 
+  local rule_spellInfo = existingRule and existingRule.spellInfo or {}
+  local spellInfoLabel = AceGUI:Create("Label")
+  spellInfoLabel:SetFullWidth(true)
+  editor:AddChild(spellInfoLabel)
+
+  idBox:SetCallback("OnTextChanged", function(widget, event, text)
+    -- Solo buscar para reglas tipo 'spell'
+    if typeDropdown:GetValue() == "spell" then
+      local spellID = tonumber(text)
+      if spellID then
+        local spellInfo = C_Spell and C_Spell.GetSpellInfo and C_Spell.GetSpellInfo(spellID)
+        if spellInfo and spellInfo.name then
+          spellInfoLabel:SetText("|T" .. (spellInfo.iconFileID or "Interface\\Icons\\INV_Misc_QuestionMark") .. ":18:18:0:0|t " .. spellInfo.name)
+          rule_spellInfo = spellInfo
+        else
+          spellInfoLabel:SetText("|cffff0000Hechizo no encontrado|r")
+        end
+      else
+        spellInfoLabel:SetText("|cffff0000ID no vÃ¡lido|r")
+      end
+    else
+      spellInfoLabel:SetText("")
+    end
+  end)
+
+  typeDropdown:SetCallback("OnValueChanged", function()
+    local text = idBox:GetText()
+    if typeDropdown:GetValue() == "spell" then
+      local spellID = tonumber(text)
+      if spellID then
+        local spellInfo = C_Spell and C_Spell.GetSpellInfo and C_Spell.GetSpellInfo(spellID)
+        if spellInfo and spellInfo.name then
+          spellInfoLabel:SetText("|T" .. (spellInfo.iconFileID or "Interface\\Icons\\INV_Misc_QuestionMark") .. ":18:18:0:0|t " .. spellInfo.name)
+        else
+          spellInfoLabel:SetText("|cffff0000Hechizo no encontrado|r")
+        end
+      else
+        spellInfoLabel:SetText("|cffff0000ID no vÃ¡lido|r")
+      end
+    else
+      spellInfoLabel:SetText("")
+    end
+  end)
+
   local saveBtn = AceGUI:Create("Button")
   saveBtn:SetText(L["SAVE"])
   saveBtn:SetFullWidth(true)
@@ -777,6 +755,12 @@ function CounterIt:OpenRuleEditor(task, existingRule, callback)
       rule.itemID = id
     elseif ruleType == "spell" then
       rule.spellID = id
+      rule.spellInfo = rule_spellInfo
+    elseif ruleType == "manual" then
+      rule.count = id
+      if not rule.count or rule.count <= 0 then
+        rule.count = task.goal or 1
+      end
     end
 
     callback(rule)
@@ -784,11 +768,61 @@ function CounterIt:OpenRuleEditor(task, existingRule, callback)
   end)
   editor:AddChild(saveBtn)
 
-  local cancelBtn = AceGUI:Create("Button")
-  cancelBtn:SetText(L["CANCEL"])
-  cancelBtn:SetFullWidth(true)
-  cancelBtn:SetCallback("OnClick", function() editor:Hide() end)
-  editor:AddChild(cancelBtn)
 end
 
--- fin del archivo ui.lua
+-- ui.lua - fin del archivo 
+
+--[[ Renderizar lista de tareas pausadas
+function CounterIt:nousar_RenderPausedTasks()
+  if not self.pausedTasksScrollFrame then return end
+
+  local group = self.pausedTasksScrollFrame
+  group:ReleaseChildren()
+
+  for name, task in pairs(self.globalTasks()) do
+    if not task.active then
+      local row = AceGUI:Create("SimpleGroup")
+      row:SetLayout("Flow")
+      row:SetFullWidth(true)
+      row:SetHeight(30)
+
+      if task.icon then
+        local icon = AceGUI:Create("Label")
+        icon:SetImage(task.icon, 24, 24)
+        icon:SetWidth(30)
+        row:AddChild(icon)
+      end
+
+      local label = AceGUI:Create("InteractiveLabel")
+      label:SetText( format( L["TASK_OBJECTIVE"], tostring(task.description), tonumber(task.goal) ) )
+      label:SetFontObject(GameFontNormal)
+      label:SetWidth(260)
+      label:SetHeight(30)
+      label:SetColor(self.selectedPausedTask == name and 1 or 1, self.selectedPausedTask == name and 1 or 1, self.selectedPausedTask == name and 0 or 1)
+
+      label:SetCallback("OnEnter", function(widget)
+        GameTooltip:SetOwner(widget.frame, "ANCHOR_RIGHT")
+        GameTooltip:SetText(format(L["TASK_TOOLTIP_OBJECTIVE"], task.description, task.goal))
+        if task.hint then
+          GameTooltip:AddLine(task.hint, 1, 0.9, 0)
+        end
+        GameTooltip:Show()
+      end)
+      label:SetCallback("OnLeave", GameTooltip_Hide)
+      label:SetCallback("OnClick", function()
+        self.selectedPausedTask = name
+        self:RenderAllTasks()
+      end)
+
+      row:AddChild(label)
+      group:AddChild(row)
+    end
+  end
+
+  -- Espaciador inferior
+  local spacer = AceGUI:Create("Label")
+  spacer:SetFullWidth(true)
+  spacer:SetText(" ")
+  group:AddChild(spacer)
+end
+]]--

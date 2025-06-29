@@ -1,4 +1,5 @@
--- L�gica de validaci�n de reglas de tareas
+-- rules.lua
+-- Lógica de validación de reglas de tareas
 
 local CounterIt = LibStub("AceAddon-3.0"):GetAddon("CounterIt")
 
@@ -6,11 +7,15 @@ local CounterIt = LibStub("AceAddon-3.0"):GetAddon("CounterIt")
 local function getTasks() return CounterIt.globalTasks() end
 local function getCounters() return CounterIt.charCounters() end
 
--- Evaluar una regla individual
-function CounterIt:EvaluateRule(name, task, rule)
+--- Evalúa una regla individual y marca si está completada.
+--- @param taskID string           -- ID de la tarea
+--- @param task TaskData           -- Estructura de la tarea
+--- @param rule RuleData           -- Estructura de la regla a evaluar
+--- @return boolean                -- true si la regla está completada, false si no
+function CounterIt:EvaluateRule(taskID, task, rule)
   if rule.type == "manual" or rule.type == "petcapture" then
-    local count = getCounters()[name] or 0
-    rule.completed = (count >= rule.count)
+    local count = getCounters()[taskID] or 0
+    rule.completed = (count >= rule.count or 1)
   elseif rule.type == "quest" and rule.questID and type(rule.questID) == "number" then
     rule.completed = C_QuestLog.IsQuestFlaggedCompleted(rule.questID) or C_QuestLog.ReadyForTurnIn(tonumber(rule.questID))
   elseif rule.type == "item" and rule.itemID then
@@ -22,27 +27,9 @@ function CounterIt:EvaluateRule(name, task, rule)
   return rule.completed
 end
 
---[[ Evaluar si toda la tarea est� completa
-function CounterIt:EvaluateTaskCompletion(name, task)
-  if not task.rules then
-    task.completed = false
-    return
-  end
-
-  local allCompleted = true
-  for _, rule in ipairs(task.rules) do
-    if not rule.completed then
-      allCompleted = false
-      if task.completed then
-          self:Debug("EvaluateTaskCompletion; fail", name, task.type)
-      end
-      break
-    end
-  end
-  task.completed = allCompleted
-end
-]]--
-
+--- Comprueba si una regla está completada y actualiza su campo 'completed'.
+--- @param rule RuleData           -- Regla a comprobar
+--- @param task TaskData           -- Tarea asociada
 function CounterIt:CheckRuleCompletion(rule, task)
   local progress = rule.progress or 0
   local required = rule.count or task.goal
@@ -58,15 +45,18 @@ function CounterIt:CheckRuleCompletion(rule, task)
   end
 end
 
--- Eval�a si una tarea debe considerarse completada
-function CounterIt:EvaluateTaskCompletion(name, task)
+-- Evalúa si una tarea debe considerarse completada
+--- Evalúa si una tarea debe considerarse completada en base a sus reglas.
+--- @param taskID string           -- ID de la tarea
+--- @param task TaskData           -- Estructura de la tarea
+function CounterIt:EvaluateTaskCompletion(taskID, task)
   if not task.rules then
     task.completed = false
     return
   end
 
-  local hasCompletionRules = false      -- �Hay reglas marcadas como 'completion'?
-  local allCompletionPassed = true      -- �Est�n todas esas reglas completadas?
+  local hasCompletionRules = false      -- ¿Hay reglas marcadas como 'completion'?
+  local allCompletionPassed = true      -- ¿Están todas esas reglas completadas?
 
   -- Recorremos las reglas buscando solo aquellas con role = "completion"
   for _, rule in ipairs(task.rules) do
@@ -79,15 +69,15 @@ function CounterIt:EvaluateTaskCompletion(name, task)
   end
 
   if hasCompletionRules then
-    -- Si hay reglas espec�ficas de finalizaci�n, usamos solo esas para decidir
+    -- Si hay reglas específicas de finalización, usamos solo esas para decidir
     task.completed = allCompletionPassed
   else
-    -- Si no hay reglas de 'completion', aplicamos la l�gica anterior (todas deben estar completas)
+    -- Si no hay reglas de 'completion', aplicamos la lógica anterior (todas deben estar completas)
     local allRulesComplete = true
     for _, rule in ipairs(task.rules) do
       if not rule.completed then
         allRulesComplete = false
-        self:Debug("EvaluateTaskCompletion; fail", name, rule.type)
+        self:Debug("EvaluateTaskCompletion; fail", taskID, rule.type)
         break
       end
     end
@@ -95,21 +85,32 @@ function CounterIt:EvaluateTaskCompletion(name, task)
   end
 end
 
--- Actualizar el progreso de una tarea (contadores, reglas, estado)
-function CounterIt:UpdateTaskProgress(name, task, reset)
+--- Actualiza el progreso de una tarea, evaluando reglas y estado.
+--- @param taskID string           -- ID de la tarea
+--- @param task TaskData           -- Tarea a actualizar
+--- @param reset boolean|nil       -- Si es true, reinicia el estado de la tarea
+--- @return boolean                -- true si la tarea está completada tras actualizar, false si no
+function CounterIt:UpdateTaskProgress(taskID, task, reset)
+--if not self:IsTrackingEnabled() then return end
+  local debug = (taskID == "garbage-day") and reset
   if reset then
     task.completed = false
   end
   if task.rules then
     for _, rule in ipairs(task.rules) do
-      self:EvaluateRule(name, task, rule)
+      if debug then
+        self:Print("EvaluateRule", rule)
+      end
+      self:EvaluateRule(taskID, task, rule)
     end
   end
-  self:EvaluateTaskCompletion(name, task)
+  self:EvaluateTaskCompletion(taskID, task)
   return task.completed
 end
 
--- Agregar regla de tipo misi�n
+--- Agrega una regla de tipo misión (quest) a una tarea.
+--- @param task TaskData           -- Tarea a modificar
+--- @param questID number          -- ID de la misión
 function CounterIt:AddQuestRuleToTask(task, questID)
   if not task.rules then task.rules = {} end
   table.insert(task.rules, {
@@ -119,7 +120,10 @@ function CounterIt:AddQuestRuleToTask(task, questID)
   })
 end
 
--- Agregar regla de tipo objeto
+--- Agrega una regla de tipo objeto (item) a una tarea.
+--- @param task TaskData           -- Tarea a modificar
+--- @param itemID number           -- ID del objeto
+--- @param count number|nil        -- Cantidad necesaria (opcional)
 function CounterIt:AddItemRuleToTask(task, itemID, count)
   if not task.rules then task.rules = {} end
   table.insert(task.rules, {
@@ -131,6 +135,8 @@ function CounterIt:AddItemRuleToTask(task, itemID, count)
 end
 
 -- Agregar regla de captura de mascotas
+--- Agrega una regla de tipo captura de mascotas a una tarea.
+--- @param task TaskData           -- Tarea a modificar
 function CounterIt:AddPetCaptureRuleToTask(task)
   if not task.rules then task.rules = {} end
   table.insert(task.rules, {
@@ -141,11 +147,15 @@ function CounterIt:AddPetCaptureRuleToTask(task)
 end
 
 -- Obtener progreso de una regla
+--- Obtiene el progreso actual de una regla concreta.
+--- @param task TaskData           -- Tarea asociada
+--- @param rule RuleData           -- Regla de la que obtener progreso
+--- @return number                 -- Progreso numérico actual
 function CounterIt:GetRuleProgress(task, rule)
   if not task then return -1 end
 
-  local name = task.description
-  local count = getCounters()[name] or 0
+  local taskID = task.id
+  local count = getCounters()[taskID] or 0
 
   if rule.type == "manual" or rule.type == "petcapture" then
     return count
@@ -160,6 +170,9 @@ function CounterIt:GetRuleProgress(task, rule)
 end
 
 -- Obtener el mayor progreso entre todas las reglas
+--- Obtiene el progreso máximo entre todas las reglas de una tarea.
+--- @param task TaskData           -- Tarea a consultar
+--- @return number                 -- Máximo progreso entre todas las reglas
 function CounterIt:GetTaskProgress(task)
   if not task then return -1 end
 
@@ -173,11 +186,106 @@ function CounterIt:GetTaskProgress(task)
   return maxProgress
 end
 
+--- Comprueba si un ID corresponde a una plantilla de tarea.
+--- @param id string               -- ID de plantilla
+--- @return boolean                -- true si es plantilla, false si no
 function CounterIt:IsTemplate(id)
   return self.taskTemplates and self.taskTemplates[id] ~= nil
 end
 
-function CounterIt:TaskExists(id)
-  return self.tasks and self.tasks[id] ~= nil
+--- Comprueba si una tarea existe en la base de datos.
+--- @param taskID string           -- ID de tarea
+--- @return boolean                -- true si existe, false si no
+function CounterIt:TaskExists(taskID)
+  return self.tasks and self.tasks[taskID] ~= nil
 end
 
+-- Valida que todas las reglas "manual" tengan un parámetro "count" válido (>0)
+-- Si no, lo corrige y muestra aviso en modo debug.
+local DEFAULT_MANUAL_COUNT = 1
+
+function CounterIt:ValidateManualRules()
+  local db = self.db and self.db.global
+  if not db or not db.tasks then return end
+
+  local erroresDetectados = false
+  local ruleCount = 0
+
+  for taskID, task in pairs(db.tasks) do
+    if task.rules and type(task.rules) == "table" then
+      for i, rule in ipairs(task.rules) do
+        if rule.type == "manual" then
+          ruleCount = ruleCount + 1
+          if type(rule.count) ~= "number" or rule.count < 1 then
+            -- Usar el goal de la tarea si es válido
+            local goal = tonumber(task.goal)
+            if goal and goal > 0 then
+              rule.count = goal
+            else
+              rule.count = DEFAULT_MANUAL_COUNT
+            end
+            erroresDetectados = true
+            self:Debug(string.format(
+              "Tarea '%s': regla manual %d no tenía 'count' válido, se ha puesto a %d (goal=%s)",
+              taskID, i, rule.count, tostring(task.goal)
+            ))
+          end
+        end
+      end
+    end
+  end
+
+  if erroresDetectados or (ruleCount > 0) then
+    print("|cffff0000[CounterIt]|r Se han corregido reglas 'manual' sin parámetro 'count'.", ruleCount)
+  end
+end
+
+-- Migrar tareas existentes según la plantilla actual (sin perder progreso del usuario)
+function CounterIt:ReapplyTemplatesToTasks()
+  local tasks = self.db and self.db.global and self.db.global.tasks
+  if not tasks or not self.taskTemplates then return end
+
+  local totalUpdated = 0
+
+  for taskID, task in pairs(tasks) do
+    local template = self.taskTemplates[taskID]
+    if template then
+      -- Conserva progreso y flags personalizados:
+      local active     = task.active
+      local completed  = task.completed
+      local counters   = task.counters
+      local userFields = {} -- Si tienes otros campos personalizados a conservar
+
+      -- Copia todo lo de la plantilla (description, hint, rules, goal, etc):
+      for k, v in pairs(template) do
+        task[k] = v
+      end
+
+      -- Restaura los campos que quieres conservar:
+      task.active     = active
+      task.completed  = completed
+      if counters then task.counters = counters end
+      -- task.[otros campos] = userFields.[otros campos] (si necesitas más)
+
+      totalUpdated = totalUpdated + 1
+    end
+  end
+
+  print(format("[CounterIt] Plantillas reaplicadas a %d tareas existentes.", totalUpdated))
+end
+
+--- Comprueba si una tarea admite control manual (botones [-][+]).
+--- Devuelve true si existe alguna regla de tipo "manual" o "petcapture".
+--- @param task TaskData           -- La tarea a comprobar
+--- @return boolean                -- true si se puede avanzar manualmente, false si no
+function CounterIt:TaskAllowsManualControl(task)
+  if not task or not task.rules then return false end
+  for _, rule in ipairs(task.rules) do
+    if rule.type == "manual" or rule.type == "petcapture" then
+      return true
+    end
+  end
+  return false
+end
+
+-- final del archivo -- rules.lua

@@ -1,3 +1,4 @@
+-- util.lua
 local CounterIt = LibStub("AceAddon-3.0"):GetAddon("CounterIt")
 local AceGUI = LibStub("AceGUI-3.0")
 local L = LibStub("AceLocale-3.0"):GetLocale("CounterIt")
@@ -8,14 +9,17 @@ local GetContainerNumSlots = (C_Container and C_Container.GetContainerNumSlots) 
 -- Exportar todas las tareas como texto comprimido
 function CounterIt:ExportTasks()
   local exportData = {}
-  for name, task in pairs(self.globalTasks()) do
-    exportData[name] = {
+  for taskID, task in pairs(self.globalTasks()) do
+    exportData[taskID] = {
+      id = taskID,
       description = task.description,
       goal = task.goal,
       icon = task.icon,
       active = task.active,
       completed = task.completed,
       rules = task.rules,
+      templateID = task.templateID,
+      hint = task.hint,
     }
   end
 
@@ -55,11 +59,12 @@ function CounterIt:ImportTasks(encoded)
   end
 
   self:Print(L["IMPORT_SUCCESS"])
-  self:RenderPausedTasks()
+
+  self:RenderAllTasks()
   self:RenderActiveTasks()
 end
 
--- Ventana gr·fica para exportar/importar texto
+-- Ventana gr√°fica para exportar/importar texto
 function CounterIt:OpenExportImportWindow()
   local frame = AceGUI:Create("Frame")
   frame:SetTitle(L["EXPORT_IMPORT_TASKS"])
@@ -105,3 +110,5 @@ function CounterIt:HasItem(itemID)
   end
   return false
 end
+
+-- util.lua -- fina del archivo

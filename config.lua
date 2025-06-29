@@ -20,7 +20,18 @@ local options = {
           name = L["ENABLE_TRIGGERS"],
           desc = L["ENABLE_TRIGGERS_DESC"],
           get = function() return CounterIt.db.profile.enableTriggers end,
-          set = function(_, val) CounterIt.db.profile.enableTriggers = val end,
+          set = function(_, val)
+            CounterIt.db.profile.enableTriggers = val 
+            if val then
+              if CounterIt.RegisterRelevantEvents then
+                CounterIt:RegisterRelevantEvents()
+              end
+            else
+              if CounterIt.UnregisterRelevantEvents then
+                CounterIt:UnregisterRelevantEvents()
+              end
+            end
+          end,
         },
         enableTracking = {
           type = "toggle",

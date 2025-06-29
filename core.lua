@@ -2,6 +2,10 @@ local CounterIt = LibStub("AceAddon-3.0"):NewAddon("CounterIt", "AceConsole-3.0"
 local AceGUI = LibStub("AceGUI-3.0")
 local L = LibStub("AceLocale-3.0"):GetLocale("CounterIt")
 
+--*-- DB_VERSION = 1 -- hasta v0.1.3
+--*-- DB_VERSION = 2 -- desde v0.1.4
+local DB_VERSION = 3 -- desde v0.1.5
+
 -- Variables compartidas entre archivos
 local globalTasks     -- nivel cuenta
 local charCounters    -- nivel personaje
@@ -13,11 +17,84 @@ function CounterIt:Debug(...)
   end
 end
 
--- Inicializaci�n
+---Devuelve true si el seguimiento de tareas está habilitado por configuración.
+---@return boolean
+function CounterIt:IsTrackingEnabled()
+  return self.db and self.db.profile and self.db.profile.enableTracking == true
+end
+
+
+--- Migra todas las tareas existentes en la base de datos al nuevo sistema basado en IDs únicos.
+--- - Asigna `task.id` a cada tarea.
+--- - Usa como clave interna el ID único (plantilla o generado para tareas personalizadas).
+--- - Elimina duplicados y claves antiguas basadas en descripción.
+--- - Deja la base de datos limpia y lista para el sistema de IDs.
+---@return nil
+function CounterIt:MigrateTasksToIDs()
+  local tasks = self.db and self.db.global and self.db.global.tasks
+  if not tasks then return end
+
+  local templates = self.taskTemplates or {}
+  local newTasks = {}
+  local changed = 0
+  local customCount = 0
+  local existingIDs = {}
+
+  for oldKey, task in pairs(tasks) do
+    -- 1. Si es tarea de plantilla, usa su id único
+    local id = nil
+    for tid, tpl in pairs(templates) do
+      if tpl.description == task.description or (task.templateID and task.templateID == tid) then
+        id = tpl.id or tid
+        break
+      end
+    end
+    -- 2. Si es tarea personalizada, genera un id único si no existe
+    if not id then
+      if task.id then
+        id = task.id
+      else
+        id = "custom-"..tostring(time()).."-"..tostring(customCount)
+        customCount = customCount + 1
+      end
+    end
+
+    -- Evita duplicados
+    if not existingIDs[id] then
+      task.id = id
+      newTasks[id] = task
+      existingIDs[id] = true
+      if oldKey ~= id then changed = changed + 1 end
+    end
+  end
+
+  self.db.global.tasks = newTasks
+  print(string.format("[CounterIt] Migració a sistema de IDs: %d tareas actualizadas", changed))
+end
+
+function CounterIt:MigrateDatabase()
+  local db = self.db.global
+  if not db.dbVersion then db.dbVersion = 1 end
+
+  if db.dbVersion < 2 then
+    self:ReapplyTemplatesToTasks()
+    db.dbVersion = 2
+  end
+
+  if db.dbVersion < 3 then
+    self:MigrateTasksToIDs()
+    db.dbVersion = 3
+  end
+
+  db.dbVersion = DB_VERSION
+end
+
+-- Inicialización
 function CounterIt:OnInitialize()
   -- DB global (por cuenta)
   self.db = LibStub("AceDB-3.0"):New("CounterItGlobalData", {
     global = {
+      dbVersion = DB_VERSION,
       tasks = {},
       taskManagerFrame = { x = 0, y = 0, width = 400, height = 500 },
       activeMonitorFrame = { x = 0, y = 0, width = 400, height = 500 },
@@ -25,17 +102,23 @@ function CounterIt:OnInitialize()
     },
   })
 
+  self:MigrateDatabase()
+
+  self:ValidateManualRules()
+
   -- DB por personaje
   self.charDb = LibStub("AceDB-3.0"):New("CounterItCharData", {
     char = {
       counters = {},
+      enableTracking = true,
+      enableTriggers = true,
     },
   })
 
-  self:InitConfig()
-
   globalTasks = self.db.global.tasks
   charCounters = self.charDb.char.counters
+
+  self:MigrateDatabase() -- v0.1.5
 
   -- Comandos de consola
   self:RegisterChatCommand("counterit", "OpenTaskManager")
@@ -87,20 +170,22 @@ function CounterIt:ResetActiveTasks()
 end
   
 function CounterIt:HandleAutoTrigger(id)
-    if self:IsTemplate(id) then
-        local task = self:CreateTaskFromTemplate(id)
-        if task then
-          self:ActivateTask(task.id)
-        else
-          --print("HandleAutoTrigger: Tarea duplicada con ID: " .. tostring(id))
-        end
-    elseif self:TaskExists(id) then
-        self:ActivateTask(id)
+  if self:IsTemplate(id) then
+    local task = self:CreateTaskFromTemplate(id)
+    if task then
+      self:ActivateTask(task.id)
     else
-        print("HandleAutoTrigger: No se encontr� tarea o plantilla con ID: " .. tostring(id))
+      --print("HandleAutoTrigger: Tarea duplicada con ID: " .. tostring(id))
     end
+  elseif self:TaskExists(id) then
+    self:ActivateTask(id)
+  else
+    self:Debug("HandleAutoTrigger: No se encontró tarea o plantilla con ID: " .. tostring(id))
+  end
 end
 
--- Exponer referencias para otros m�dulos
+-- Exponer referencias para otros módulos
 CounterIt.globalTasks = function() return globalTasks end
 CounterIt.charCounters = function() return charCounters end
+
+-- core.lua -- fin del archivo
