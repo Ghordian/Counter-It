@@ -1,0 +1,20 @@
+name: Package and Upload to CurseForge
+
+on:
+  push:
+    tags:
+      - 'v*'    # o branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Package and upload to CurseForge
+        uses: curseforge/curseforge-github-action@v3
+        with:
+          api-token: ${{ secrets.CF_API_KEY }}
+          project-id: 1289207   # <-- tu project ID de CurseForge
+          changelog: ${{ github.event.head_commit.message }}
+          game-path: '.'       # directorio raíz del addon
