@@ -71,6 +71,9 @@ L["RULE_ITEM"] = "Obtain item (itemID)"                   -- enUS
 L["RULE_SPELL"] = "Cast spell (spellID)"                  -- enUS
 L["RULE_PETCAPTURE"] = "Capture battle pets"              -- enUS
 
+L["RULE_SPELL_NOT_FOUND"] = "|cffff0000Spell not found|r"
+L["RULE_SPELLID_NOT_VALID"] = "|cffff0000ID not valid|r"
+
 L["SCROLLFRAME_DEBUG"] = "scrollFrame = %s"
 
 -- events
@@ -105,5 +108,11 @@ L["ENABLE_TRIGGERS"] = "Enable automatic triggers"
 L["ENABLE_TRIGGERS_DESC"] = "Allow Counter-It to activate tasks automatically based on in-game conditions."
 L["ENABLE_TRACKING"] = "Enable task tracking"
 L["ENABLE_TRACKING_DESC"] = "Allow active tasks to be displayed and updated in the tracking panel."
+L["DEBUG_MODE"] = "Depuración (debugMode)"
+L["DEBUG_MODE_DESC"] = "Activa/desactiva el modo depuración para Counter-It."
 
+-- rules
+L["ManualRulesFixed"] = "Manual rules without 'count' parameter have been fixed."
+L["TemplatesReapplied"] = "Templates reapplied to %d existing tasks."
+L["ManualRuleFixedDebug"] = "Task '%s': manual rule %d had no valid 'count', set to %d (goal=%s)"
 

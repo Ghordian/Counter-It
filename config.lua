@@ -19,6 +19,7 @@ local options = {
           type = "toggle",
           name = L["ENABLE_TRIGGERS"],
           desc = L["ENABLE_TRIGGERS_DESC"],
+          order = 1,
           get = function() return CounterIt.db.profile.enableTriggers end,
           set = function(_, val)
             CounterIt.db.profile.enableTriggers = val 
@@ -37,9 +38,22 @@ local options = {
           type = "toggle",
           name = L["ENABLE_TRACKING"],
           desc = L["ENABLE_TRACKING_DESC"],
+          order = 2,
           get = function() return CounterIt.db.profile.enableTracking end,
           set = function(_, val) CounterIt.db.profile.enableTracking = val end,
         },
+        debugMode = {
+          type = "toggle",
+          name = L["DEBUG_MODE"] or "Depuración (debugMode)",
+          desc = L["DEBUG_MODE_DESC"] or "Activa/desactiva el modo depuración para Counter-It.",
+          order = 30, -- ajusta el orden si lo prefieres más arriba o abajo
+          get = function() return CounterIt.db.profile.debugMode end,
+          set = function(_, val) 
+            CounterIt.db.profile.debugMode = val
+            CounterIt:ToggleDebugMode()
+          end,
+        },
+
       },
     },
   },

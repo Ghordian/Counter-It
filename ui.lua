@@ -1,9 +1,12 @@
+-- ui.lua
+
 local CounterIt = LibStub("AceAddon-3.0"):GetAddon("CounterIt")
 
 local AceGUI = LibStub("AceGUI-3.0")
 
 local L = LibStub("AceLocale-3.0"):GetLocale("CounterIt") 
 
+--- Guarda el estado (posición y tamaño) del panel de gestión de tareas.
 function CounterIt:SaveTaskManagerFrameState()
   if not self.taskManagerFrame or not self.taskManagerFrame.frame then return end
   local f = self.taskManagerFrame.frame
@@ -25,7 +28,7 @@ local TASKMANAGER_SCROLL_OFFSET = 220
 local TASKMANAGER_SCROLL_MIN = 100
 local BUTTON_WIDTH = 100
 
--- Paenl Gestor de tareas
+--- Abre el panel de gestión de tareas ("Task Manager") y construye la UI con AceGUI.
 function CounterIt:OpenTaskManager()
   if self.taskManagerFrame then
     self.taskManagerFrame:Release()
@@ -182,7 +185,7 @@ function CounterIt:OpenTaskManager()
   self:AddExportImportButton(bottomGroup)
 end
 
--- Mostrar todas las tareas con checkbox de activación
+--- Renderiza la lista completa de tareas en el panel de gestión de tareas.
 function CounterIt:RenderAllTasks()
   if not self.pausedTasksScrollFrame then return end
 
@@ -250,7 +253,8 @@ function CounterIt:RenderAllTasks()
   group:AddChild(spacer)
 end
 
--- Botonera superior del gestor de tareas
+--- Añade la botonera superior (crear, plantilla, monitor) al gestor de tareas.
+---@param parentFrame table -- Widget AceGUI SimpleGroup destino.
 function CounterIt:AddTopButtons(parentFrame)
   local row = AceGUI:Create("SimpleGroup")
   row:SetFullWidth(true)
@@ -277,7 +281,8 @@ function CounterIt:AddTopButtons(parentFrame)
   parentFrame:AddChild(row)
 end
 
--- Botón de compartir tareas
+--- Añade el botón de exportar/importar tareas al gestor de tareas.
+---@param parentFrame table -- Widget AceGUI SimpleGroup destino.
 function CounterIt:AddExportImportButton(parentFrame)
   local shareButton = AceGUI:Create("Button")
   shareButton:SetText(L["EXPORT_IMPORT"])
@@ -288,7 +293,7 @@ function CounterIt:AddExportImportButton(parentFrame)
   parentFrame:AddChild(shareButton)
 end
 
--- Mostrar ventana flotante con tareas activas
+--- Abre la ventana flotante de monitor de tareas activas.
 function CounterIt:OpenActiveTasksMonitor()
   if self.activeMonitorFrame then
     self.activeMonitorFrame:Show()
@@ -387,7 +392,7 @@ function CounterIt:OpenActiveTasksMonitor()
   self:RenderActiveTasks()
 end
 
--- Mostrar lista de tareas activas con botones de interacción
+--- Renderiza la lista de tareas activas y sus controles de interacción.
 function CounterIt:RenderActiveTasks()
   if self.activeTasksFrame then
     self.activeTasksFrame:Hide()
@@ -479,7 +484,7 @@ function CounterIt:RenderActiveTasks()
       textCount:SetSize(50, 24)
       local label = textCount:CreateFontString(nil, "OVERLAY", "GameFontNormal")
       local progress = (counters[taskID] or 0)
-      progress = self:GetTaskProgress(task, progress)
+      --progress = self:GetTaskProgress(task, progress)--REJECTED--TODO
       label:SetText(progress .. " / " .. task.goal)
       label:SetTextColor(task.completed and 0 or 1, task.completed and 1 or 1, 0)
       label:SetAllPoints(true)
@@ -503,6 +508,10 @@ function CounterIt:RenderActiveTasks()
   container:SetHeight(totalHeight)
 end
 
+--- Renderiza la lista de reglas asociadas a una tarea.
+---@param rulesGroup table    -- Widget AceGUI destino.
+---@param task TaskData       -- Tarea a la que pertenecen las reglas.
+---@param taskID string       -- ID de la tarea.
 function CounterIt:RenderRules(rulesGroup, task, taskID) -- existingTaskName
   rulesGroup:ReleaseChildren()
 
@@ -540,7 +549,8 @@ function CounterIt:RenderRules(rulesGroup, task, taskID) -- existingTaskName
   end
 end
 
---- Editor de tareas personalizadas (existingTaskName)
+--- Abre el editor de tareas personalizadas (nueva o existente).
+---@param taskID string?      -- ID de la tarea a editar (opcional).
 function CounterIt:OpenTaskEditor(taskID)
   local existingTaskName = (taskID and self.globalTasks()[taskID])
   if self.taskEditor then
@@ -662,11 +672,10 @@ function CounterIt:OpenTaskEditor(taskID)
   self.taskEditor:AddChild(saveButton)
 end
 
--- Editor de reglas
----Abre el panel de edición para una regla de una tarea.
----@param task TaskData                      -- La tabla de la tarea a la que pertenece la regla.
----@param existingRule? RuleData             -- La regla existente a editar (opcional). Si no se proporciona, se crea una nueva.
----@param callback fun(rule: RuleData)       -- Función de retorno que recibe la regla final tras guardar.
+--- Abre el editor para una regla de una tarea.
+---@param task TaskData                        -- Tarea a la que pertenece la regla.
+---@param existingRule? RuleData               -- Regla existente (opcional).
+---@param callback fun(rule: RuleData)         -- Función callback a ejecutar tras guardar.
 function CounterIt:OpenRuleEditor(task, existingRule, callback)
   local editor = AceGUI:Create("Frame")
   editor:SetTitle(existingRule and L["EDIT_RULE"] or L["NEW_RULE"])
@@ -731,10 +740,10 @@ function CounterIt:OpenRuleEditor(task, existingRule, callback)
         if spellInfo and spellInfo.name then
           spellInfoLabel:SetText("|T" .. (spellInfo.iconFileID or "Interface\\Icons\\INV_Misc_QuestionMark") .. ":18:18:0:0|t " .. spellInfo.name)
         else
-          spellInfoLabel:SetText("|cffff0000Hechizo no encontrado|r")
+          spellInfoLabel:SetText(L["RULE_SPELL_NOT_FOUND"])
         end
       else
-        spellInfoLabel:SetText("|cffff0000ID no válido|r")
+        spellInfoLabel:SetText(l["RULE_SPELLID_NOT_VALID"])
       end
     else
       spellInfoLabel:SetText("")
@@ -756,6 +765,7 @@ function CounterIt:OpenRuleEditor(task, existingRule, callback)
     elseif ruleType == "spell" then
       rule.spellID = id
       rule.spellInfo = rule_spellInfo
+      rule.role = id
     elseif ruleType == "manual" then
       rule.count = id
       if not rule.count or rule.count <= 0 then
@@ -771,58 +781,3 @@ function CounterIt:OpenRuleEditor(task, existingRule, callback)
 end
 
 -- ui.lua - fin del archivo 
-
---[[ Renderizar lista de tareas pausadas
-function CounterIt:nousar_RenderPausedTasks()
-  if not self.pausedTasksScrollFrame then return end
-
-  local group = self.pausedTasksScrollFrame
-  group:ReleaseChildren()
-
-  for name, task in pairs(self.globalTasks()) do
-    if not task.active then
-      local row = AceGUI:Create("SimpleGroup")
-      row:SetLayout("Flow")
-      row:SetFullWidth(true)
-      row:SetHeight(30)
-
-      if task.icon then
-        local icon = AceGUI:Create("Label")
-        icon:SetImage(task.icon, 24, 24)
-        icon:SetWidth(30)
-        row:AddChild(icon)
-      end
-
-      local label = AceGUI:Create("InteractiveLabel")
-      label:SetText( format( L["TASK_OBJECTIVE"], tostring(task.description), tonumber(task.goal) ) )
-      label:SetFontObject(GameFontNormal)
-      label:SetWidth(260)
-      label:SetHeight(30)
-      label:SetColor(self.selectedPausedTask == name and 1 or 1, self.selectedPausedTask == name and 1 or 1, self.selectedPausedTask == name and 0 or 1)
-
-      label:SetCallback("OnEnter", function(widget)
-        GameTooltip:SetOwner(widget.frame, "ANCHOR_RIGHT")
-        GameTooltip:SetText(format(L["TASK_TOOLTIP_OBJECTIVE"], task.description, task.goal))
-        if task.hint then
-          GameTooltip:AddLine(task.hint, 1, 0.9, 0)
-        end
-        GameTooltip:Show()
-      end)
-      label:SetCallback("OnLeave", GameTooltip_Hide)
-      label:SetCallback("OnClick", function()
-        self.selectedPausedTask = name
-        self:RenderAllTasks()
-      end)
-
-      row:AddChild(label)
-      group:AddChild(row)
-    end
-  end
-
-  -- Espaciador inferior
-  local spacer = AceGUI:Create("Label")
-  spacer:SetFullWidth(true)
-  spacer:SetText(" ")
-  group:AddChild(spacer)
-end
-]]--

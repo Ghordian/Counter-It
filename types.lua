@@ -3,6 +3,7 @@
 ---@class TaskData
 ---@field taskID string                 -- Identificar único de la tarea
 ---@field description string            -- Descripción de la tarea
+---@field hint? string                  -- Texto adicional (opcional)
 ---@field goal number                   -- Número objetivo para completarla
 ---@field icon number|string            -- ID del icono (usualmente un número o ruta)
 ---@field rules RuleData[]              -- Lista de reglas asociadas
@@ -11,6 +12,7 @@
 ---@field step? number                  -- Paso dentro de una cadena de tareas (opcional)
 ---@field url? string                   -- URL informativa (opcional)
 ---@field notes? string                 -- Notas adicionales (opcional)
+---@field templateID? string            -- (opcional) ID de plantilla de origen si fue creada desde plantilla
 
 ---@class RuleData
 ---@field type string                  -- Tipo de regla: "manual", "quest", "spell", etc.
@@ -25,8 +27,8 @@
 ---@field object? number               -- Para tipo object (como fishing nodes)
 ---@field event? string                -- Para tipo event
 
----@class TasksList; tabla de tareas global definidas
+---@alias TasksList table<string, TaskData>  -- Diccionario: clave = taskID, valor = TaskData
 
----@class CounterList: tabla de contador de progreso de tareas por personaje
+---@alias CounterList table<string, number>  -- Diccionario: clave = taskID, valor = progreso numérico
 
 -- types.lua - fin del archivo

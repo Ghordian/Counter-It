@@ -3,6 +3,8 @@
 
 local CounterIt = LibStub("AceAddon-3.0"):GetAddon("CounterIt")
 
+local L = LibStub("AceLocale-3.0"):GetLocale("CounterIt") 
+
 -- Obtener acceso a las variables compartidas
 local function getTasks() return CounterIt.globalTasks() end
 local function getCounters() return CounterIt.charCounters() end
@@ -15,14 +17,15 @@ local function getCounters() return CounterIt.charCounters() end
 function CounterIt:EvaluateRule(taskID, task, rule)
   if rule.type == "manual" or rule.type == "petcapture" then
     local count = getCounters()[taskID] or 0
+    rule.progress = count
     rule.completed = (count >= rule.count or 1)
   elseif rule.type == "quest" and rule.questID and type(rule.questID) == "number" then
     rule.completed = C_QuestLog.IsQuestFlaggedCompleted(rule.questID) or C_QuestLog.ReadyForTurnIn(tonumber(rule.questID))
   elseif rule.type == "item" and rule.itemID then
     rule.completed = self:HasItem(rule.itemID)
-  elseif rule.type == "spell" and rule.spellID then
-    local casted = self:GetSpellCastCount(rule.spellID)
-    rule.completed = casted >= (rule.count or 1)
+  elseif rule.type == "spell" and rule.role == "auto-count" then -- and rule.spellID 
+    local count = getCounters()[taskID] or 0
+    rule.progress = count
   end
   return rule.completed
 end
@@ -45,7 +48,6 @@ function CounterIt:CheckRuleCompletion(rule, task)
   end
 end
 
--- Evalúa si una tarea debe considerarse completada
 --- Evalúa si una tarea debe considerarse completada en base a sus reglas.
 --- @param taskID string           -- ID de la tarea
 --- @param task TaskData           -- Estructura de la tarea
@@ -99,7 +101,7 @@ function CounterIt:UpdateTaskProgress(taskID, task, reset)
   if task.rules then
     for _, rule in ipairs(task.rules) do
       if debug then
-        self:Print("EvaluateRule", rule)
+        self:Debug("EvaluateRule", rule)
       end
       self:EvaluateRule(taskID, task, rule)
     end
@@ -134,7 +136,6 @@ function CounterIt:AddItemRuleToTask(task, itemID, count)
   })
 end
 
--- Agregar regla de captura de mascotas
 --- Agrega una regla de tipo captura de mascotas a una tarea.
 --- @param task TaskData           -- Tarea a modificar
 function CounterIt:AddPetCaptureRuleToTask(task)
@@ -146,7 +147,6 @@ function CounterIt:AddPetCaptureRuleToTask(task)
   })
 end
 
--- Obtener progreso de una regla
 --- Obtiene el progreso actual de una regla concreta.
 --- @param task TaskData           -- Tarea asociada
 --- @param rule RuleData           -- Regla de la que obtener progreso
@@ -163,17 +163,16 @@ function CounterIt:GetRuleProgress(task, rule)
     return (C_QuestLog.ReadyForTurnIn(rule.questID) or C_QuestLog.IsQuestFlaggedCompleted(rule.questID)) and task.goal or 0
   elseif rule.type == "item" then
     return self:HasItem(rule.itemID) and task.goal or 0
-  elseif rule.type == "spell" then
-    return self:GetSpellCastCount(rule.spellID) or 0
+  elseif rule.type == "spell" and (rule.role == "auto-count" or not rule.role) then
+    return count
   end
   return 0
 end
 
--- Obtener el mayor progreso entre todas las reglas
 --- Obtiene el progreso máximo entre todas las reglas de una tarea.
 --- @param task TaskData           -- Tarea a consultar
 --- @return number                 -- Máximo progreso entre todas las reglas
-function CounterIt:GetTaskProgress(task)
+function CounterIt:OLD_GetTaskProgress(task)
   if not task then return -1 end
 
   local maxProgress = 0
@@ -185,6 +184,51 @@ function CounterIt:GetTaskProgress(task)
   end
   return maxProgress
 end
+
+--- Obtiene el progreso máximo entre todas las reglas de una tarea.
+--- @param task TaskData           -- Tarea a consultar
+--- @return number                 -- Máximo progreso entre todas las reglas
+--[[
+  Resumen técnico
+    Usar el máximo para tareas multi-regla y multi-rol puede dar falsos completados.
+
+    Mejor usar el mínimo entre reglas de tipo "completion", o bien mostrar explícitamente 
+    el desglose de progreso de cada regla (lo ideal para tareas avanzadas).
+]]--
+function CounterIt:GetTaskProgress(task)
+  if not task then return -1 end
+
+  local relevantRules = {}
+  for _, rule in ipairs(task.rules or {}) do
+    if rule.role == "completion" then
+      table.insert(relevantRules, rule)
+    end
+  end
+
+  local function getProgress(rule)
+    return self:GetRuleProgress(task, rule)
+  end
+
+  if #relevantRules > 0 then
+    -- Si hay reglas de "completion", usar el mínimo de sus progresos
+    local minProgress = math.huge
+    for _, rule in ipairs(relevantRules) do
+      local p = getProgress(rule)
+      if p < minProgress then minProgress = p end
+    end
+    -- Si no hay progreso, vuelve a 0
+    return (minProgress ~= math.huge) and minProgress or 0
+  else
+    -- Si no hay reglas de "completion", usa el máximo entre todas
+    local maxProgress = 0
+    for _, rule in ipairs(task.rules or {}) do
+      local p = getProgress(rule)
+      if p > maxProgress then maxProgress = p end
+    end
+    return maxProgress
+  end
+end
+
 
 --- Comprueba si un ID corresponde a una plantilla de tarea.
 --- @param id string               -- ID de plantilla
@@ -225,10 +269,7 @@ function CounterIt:ValidateManualRules()
               rule.count = DEFAULT_MANUAL_COUNT
             end
             erroresDetectados = true
-            self:Debug(string.format(
-              "Tarea '%s': regla manual %d no tenía 'count' válido, se ha puesto a %d (goal=%s)",
-              taskID, i, rule.count, tostring(task.goal)
-            ))
+            self:Debug(string.format(L["ManualRuleFixedDebug"], taskID, i, rule.count, tostring(task.goal)))
           end
         end
       end
@@ -236,7 +277,7 @@ function CounterIt:ValidateManualRules()
   end
 
   if erroresDetectados or (ruleCount > 0) then
-    print("|cffff0000[CounterIt]|r Se han corregido reglas 'manual' sin parámetro 'count'.", ruleCount)
+    self:Print("|cffff0000[CounterIt]|r " .. L["ManualRulesFixed"], ruleCount)
   end
 end
 
@@ -271,7 +312,7 @@ function CounterIt:ReapplyTemplatesToTasks()
     end
   end
 
-  print(format("[CounterIt] Plantillas reaplicadas a %d tareas existentes.", totalUpdated))
+  self:Print(format("[CounterIt] " .. L["TemplatesReapplied"], totalUpdated))
 end
 
 --- Comprueba si una tarea admite control manual (botones [-][+]).

@@ -3,8 +3,6 @@ local CounterIt = LibStub("AceAddon-3.0"):GetAddon("CounterIt")
 local L = LibStub("AceLocale-3.0"):GetLocale("CounterIt")
 
 -- Almacén interno de lanzamientos de hechizos 
-local spellCasts = {}
-local pendingSpellName
 local lastInventory = {}
 local hasScannedInventory = false
 local processedItems = {}
@@ -13,6 +11,7 @@ local processedItems = {}
 -- REGISTRO DE EVENTOS USANDO ACEEVENT
 -----------------------------------------------------
 
+--- Registra todos los eventos relevantes que el addon necesita monitorizar.
 function CounterIt:RegisterRelevantEvents()
   self:RegisterEvent("PET_BATTLE_CAPTURED")
 
@@ -33,6 +32,7 @@ function CounterIt:RegisterRelevantEvents()
   self:RegisterEvent("ACCOUNT_CHARACTER_CURRENCY_DATA_RECEIVED")
 end
 
+--- Handler que se dispara cuando el addon se habilita (login, /reload, etc).
 function CounterIt:OnEnable()
   if self._eventsRegistered then
     self:Debug("CounterIt:OnEnable")
@@ -52,6 +52,7 @@ function CounterIt:OnEnable()
   self:InitConfig()
 end
 
+--- Desregistra todos los eventos relevantes.
 function CounterIt:UnregisterRelevantEvents()
   self:UnregisterEvent("PET_BATTLE_CAPTURED")
 
@@ -72,6 +73,7 @@ function CounterIt:UnregisterRelevantEvents()
   self:UnregisterEvent("ACCOUNT_CHARACTER_CURRENCY_DATA_RECEIVED")
 end
 
+--- Handler que se dispara cuando el addon se deshabilita.
 function CounterIt:OnDisable()
   if self._eventsRegistered then
     self:UnregisterRelevantEvents()
@@ -86,6 +88,7 @@ end
 -- HANDLERS
 -----------------------------------------------------
 
+--- Handler para la captura de mascotas en batalla.
 function CounterIt:PET_BATTLE_CAPTURED()
   self:HandlePetBattleCaptured()
 end
@@ -104,8 +107,14 @@ end
 	spellID
 		number
   ]]--
+--- Handler para el evento UNIT_SPELLCAST_SENT (hechizo enviado).
+---@param event string
+---@param unit string
+---@param target string
+---@param castGUID string
+---@param spellID number
 function CounterIt:UNIT_SPELLCAST_SENT(event, unit, target, castGUID, spellID)
-  self:Debug("UNIT_SPELLCAST_SENT; u;", unit, "t;", target, "c;", castGUID, "s;", spellID)
+  --self:Debug("UNIT_SPELLCAST_SENT; u;", unit, "t;", target, "c;", castGUID, "s;", spellID)
   if unit == "player" then
     self:CheckSpellCast(spellID, target)
   end
@@ -121,9 +130,13 @@ end
     spellID
         number
   ]]--
+--- Handler para el evento UNIT_SPELLCAST_SUCCEEDED (hechizo lanzado con éxito).
+---@param unitTarget string
+---@param castGUID string
+---@param spellID number
 function CounterIt:UNIT_SPELLCAST_SUCCEEDED(unitTarget, castGUID, spellID)
   if unitTarget == "player" then
-    spellCasts[spellID] = (spellCasts[spellID] or 0) + 1
+  --spellCasts[spellID] = (spellCasts[spellID] or 0) + 1
     self:CheckSpellCast(spellID, "")
   end
 end
@@ -138,6 +151,10 @@ end
     spellID
         number
   ]]--
+--- Handler para el evento UNIT_SPELLCAST_STOP (finalización de hechizo).
+---@param unitTarget string
+---@param castGUID string
+---@param spellID number
 function CounterIt:UNIT_SPELLCAST_STOP(unitTarget, castGUID, spellID)
   if unitTarget == "player" then
     self:CheckSpellCast(spellID, "")
@@ -152,13 +169,17 @@ end
     isReloadingUi
         boolean
   ]]--
+--- Handler para el evento PLAYER_ENTERING_WORLD.
+---@param isLogin boolean
+---@param isReload boolean
 function CounterIt:PLAYER_ENTERING_WORLD(isLogin, isReload)
+--[[
   if self._enteredWorldTime and (GetTime() - self._enteredWorldTime < 5) then
     --self:Debug("Ignorando llamada duplicada de PLAYER_ENTERING_WORLD")
     return
   end
   self._enteredWorldTime = GetTime()
-  
+]]--
   if isLogin or isReload then
     self:Debug("PLAYER_ENTERING_WORLD")
     --self:Debug("loaded the UI")
@@ -179,6 +200,8 @@ end
     unitTarget
         string : UnitId
   ]]--
+--- Handler para el evento UNIT_QUEST_LOG_CHANGED.
+---@param unitTarget string
 function CounterIt:UNIT_QUEST_LOG_CHANGED(unitTarget)
   self:Debug("UNIT_QUEST_LOG_CHANGED")
   self:CheckQuestRulesForActiveTasks()
@@ -190,6 +213,8 @@ end
     questID
         number
   ]]--
+--- Handler para el evento QUEST_WATCH_UPDATE.
+---@param questID number
 function CounterIt:QUEST_WATCH_UPDATE(questID)
   self:Debug("QUEST_WATCH_UPDATE")
   self:CheckQuestRulesForActiveTasks()
@@ -199,8 +224,9 @@ end
 --[[
   https://warcraft.wiki.gg/wiki/QUEST_LOG_UPDATE
   ]]--
+--- Handler para el evento QUEST_LOG_UPDATE.
 function CounterIt:QUEST_LOG_UPDATE()
-  self:Debug("QUEST_LOG_UPDATE")
+--self:Debug("QUEST_LOG_UPDATE")
   self:CheckQuestRulesForActiveTasks()
 end
 
@@ -213,6 +239,8 @@ end
 	questID
 		number - QuestID of the accepted quest.
   ]]--
+--- Handler para el evento QUEST_ACCEPTED.
+---@param questID number
 function CounterIt:QUEST_ACCEPTED(questID)
   local taskOrTemplate = self.AutoTrigger and self.AutoTrigger:GetTaskFromEvent("QUEST_ACCEPTED", questID)
   if taskOrTemplate then
@@ -224,6 +252,7 @@ end
 --[[
   https://warcraft.wiki.gg/wiki/BAG_UPDATE_DELAYED
   ]]--
+--- Handler para el evento BAG_UPDATE_DELAYED. Gestiona triggers de objetos en el inventario.
 function CounterIt:BAG_UPDATE_DELAYED()
   self.processedItemTriggers = self.processedItemTriggers or {}
 
@@ -259,6 +288,7 @@ end
         number - Contains the raid flag bits for a unit's raid target icon. For example 64 (0x40): Unit is marked with cross.
   
   ]]--
+--- Handler para el evento COMBAT_LOG_EVENT_UNFILTERED.
 function CounterIt:COMBAT_LOG_EVENT_UNFILTERED()
   local _, subevent, _, _, _, _, _, _, _, _, _, spellID, spellName = CombatLogGetCurrentEventInfo()
   if subevent == "SPELL_CAST_SUCCESS" then
@@ -273,6 +303,8 @@ end
 	unitTarget
 		string : UnitId
   ]]--
+--- Handler para el evento UNIT_INVENTORY_CHANGED.
+---@param unitTarget string
 function CounterIt:UNIT_INVENTORY_CHANGED(unitTarget)
   self:Debug("UNIT_INVENTORY_CHANGED")
   if unitTarget and unitTarget ~= "player" then return end
@@ -284,6 +316,7 @@ end
 --[[
   https://warcraft.wiki.gg/wiki/ACCOUNT_CHARACTER_CURRENCY_DATA_RECEIVED
   ]]--
+--- Handler para el evento ACCOUNT_CHARACTER_CURRENCY_DATA_RECEIVED.
 function CounterIt:ACCOUNT_CHARACTER_CURRENCY_DATA_RECEIVED()
   self:Debug("ACCOUNT_CHARACTER_CURRENCY_DATA_RECEIVED")
   self:CheckQuestRulesForActiveTasks()
@@ -293,32 +326,35 @@ end
 -- FUNCIONES DE EVALUACIÓN DE REGLAS
 -----------------------------------------------------
 
-
+--- Procesa el lanzamiento de un hechizo y actualiza el progreso de tareas asociadas.
+---@param spellID number
+---@param target string
 function CounterIt:CheckSpellCast(spellID, target)
   if spellID then
-    self:Debug(format(L["SPELLCAST_ID"], tostring(spellID or "n/a")))
+  --self:Debug(format(L["SPELLCAST_ID"], tostring(spellID or "n/a")))
   end
   if target then
-    self:Debug(format(L["SPELLCAST_NAME"], tostring(target or "n/a")))
+  --self:Debug(format(L["SPELLCAST_NAME"], tostring(target or "n/a")))
   end
   local needRefresh = false
-  local counters = self.charCounters()
   for taskID, task in pairs(self.globalTasks()) do
     if task.active and not task.completed and task.rules then
       for _, rule in ipairs(task.rules) do
-        if rule.type == "spell" then
+        if rule.type == "spell" and rule.role == "auto-count" then
           local match = false
           if tonumber(rule.spellID) and tonumber(spellID) and tonumber(rule.spellID) == tonumber(spellID) then
             match = true
           end
 
           if match then
-            rule.progress = (rule.progress or 0) + 1
+            local counters = self.charCounters()
             counters[taskID] = (counters[taskID] or 0) + 1
             self:CheckRuleCompletion(rule, task)
-            self:EvaluateTaskCompletion(taskID, task)
-            self:Debug( format(L["SPELLCAST_MATCH"], tostring(spellID)), tonumber(counters[taskID]))
+          --self:EvaluateTaskCompletion(taskID, task)
+            self:UpdateTaskProgress(taskID, task)
+          --self:Debug( format(L["SPELLCAST_MATCH"], tostring(spellID)), tonumber(counters[taskID]))
             needRefresh = true
+            break
           end
         end
       end
@@ -329,10 +365,15 @@ function CounterIt:CheckSpellCast(spellID, target)
   end
 end
 
+--- Evalúa reglas de hechizo al recibir evento relevante.
+---@param spellID number
+---@param target string
 function CounterIt:EvaluateSpellRules(spellID, target)
   self:CheckSpellCast(spellID, target)
 end
 
+--- Evalúa reglas de quest para una questID dada.
+---@param questID number
 function CounterIt:EvaluateQuestRules(questID)
   local counters = self.charCounters()
   for taskID, task in pairs(self.globalTasks()) do
@@ -352,6 +393,7 @@ function CounterIt:EvaluateQuestRules(questID)
   self:RenderActiveTasks()  
 end
 
+--- Procesa la captura de mascota y actualiza el progreso de tareas asociadas.
 function CounterIt:HandlePetBattleCaptured()
   if not self:IsTrackingEnabled() then return end
 
@@ -370,6 +412,7 @@ function CounterIt:HandlePetBattleCaptured()
   self:RenderActiveTasks()
 end
 
+--- Escanea el inventario en busca de nuevos objetos recibidos y actualiza tareas asociadas.
 function CounterIt:ScanInventoryForNewItems()
   Print("ScanInventoryForNewItems");
   for bag = 0, NUM_BAG_SLOTS do
@@ -384,6 +427,9 @@ function CounterIt:ScanInventoryForNewItems()
   end
 end
 
+--- Procesa la recepción de un objeto y actualiza tareas asociadas.
+---@param itemID number
+---@param count number
 function CounterIt:OnItemReceived(itemID, count)
   Print("OnItemReceived", itemID, count)
   -- Regla global primero (activación automática)
@@ -409,8 +455,12 @@ function CounterIt:OnItemReceived(itemID, count)
   self:RenderActiveTasks()
 end
 
+--- Al loguear, activa triggers automáticos de misiones presentes en el personaje.
 function CounterIt:CheckAutoTriggersOnLogin()
-  if not self.AutoTrigger or not self.AutoTrigger.Rules then return end
+  if not self.AutoTrigger or not self.AutoTrigger.Rules then 
+    self:Debug('AutoTrigger', "missing")
+    return 
+  end
   local questCount = 0
   local rules = self.AutoTrigger.Rules.QUEST_ACCEPTED or {}
   for questID, templateID in pairs(rules) do
@@ -452,10 +502,11 @@ function CounterIt:CheckTriggersFromActiveQuests()
   end
 end
 
+--- Evalúa reglas de quest para tareas activas y actualiza su estado.
 function CounterIt:CheckQuestRulesForActiveTasks()
   if not self:IsTrackingEnabled() then return end
 
-  local tasks = self.globalTasks()
+  local tasks = self.globalTasks() or {}
   local questCount = 0
   for taskID, task in pairs(tasks) do
     if task.active and task.rules then
@@ -476,7 +527,7 @@ function CounterIt:CheckQuestRulesForActiveTasks()
   end
 end
 
--- Escanear inventario al entrar en el mundo y activar tareas por plantillas si hay ítems presentes
+--- Escanea el inventario al entrar al mundo y activa tareas por plantillas si hay ítems presentes.
 function CounterIt:ScanInventoryForAutoTriggers()
   if not self:IsTrackingEnabled() then return end
 
@@ -500,6 +551,7 @@ function CounterIt:ScanInventoryForAutoTriggers()
   end
 end
 
+--- Actualiza el progreso de todas las tareas activas.
 function CounterIt:UpdateTasks()
   local tasks = self.globalTasks()
   local taskCount = 0
@@ -515,7 +567,6 @@ function CounterIt:UpdateTasks()
 end
 
 --- Pausa automáticamente las tareas activas si pierdes el objeto requerido.
----
 ---@return boolean  -- true si alguna tarea ha sido pausada y es necesario refrescar la UI, false si no hubo cambios
 function CounterIt:AutoPauseTasksByInventory()
   local bDone = false
@@ -537,26 +588,16 @@ function CounterIt:AutoPauseTasksByInventory()
   return bDone
 end
 
+--- Obtiene la cantidad de veces que se lanzó un hechizo (por ID).
+---@param spellID number
+---@return number
+function CounterIt:_GetSpellCastCount(spellID)
+  return spellCasts[spellID] or 0
+end
+
 -----------------------------------------------------
 -- SLASH COMMANDS DE DEPURACIÓN
 -----------------------------------------------------
-
-SLASH_CITSIMULATE1 = "/citsim"
-SlashCmdList["CITSIMULATE"] = function()
-  CounterIt:HandlePetBattleCaptured()
-  print(L["SIMULATE_PET"])
-end
-
-SLASH_CITUPDATE1 = "/citupdate"
-SlashCmdList["CITSIMULATE"] = function()
-  CounterIt:UpdateTasks()
-  print("SLASH_CITUPDATE1")
-end
-
--- Obtener cantidad de veces que se lanzó un hechizo
-function CounterIt:GetSpellCastCount(spellID)
-  return spellCasts[spellID] or 0
-end
 
 -----------------------------------------------------
 -- COMANDO PARA SIMULAR CAPTURA DE MASCOTA
@@ -568,64 +609,13 @@ SlashCmdList["CITSIMULATE"] = function()
   print(L["SIMULATE_PET"])
 end
 
+-----------------------------------------------------
+-- COMANDO PARA SIMULAR ACTUALIZAR TAREAS
+-----------------------------------------------------
+SLASH_CITUPDATE1 = "/citupdate"
+SlashCmdList["CITSIMULATE"] = function()
+  CounterIt:UpdateTasks()
+  print("SLASH_CITUPDATE1")
+end
+
 -- events.lua -- fin del archivo
-
---[[
-
-Kaja'Cruising
-
-PLAYER_ENTERING_WORLD, 
-UNIT_QUEST_LOG_CHANGED, 
-QUEST_WATCH_UPDATE, 
-QUEST_LOG_UPDATE, 
-QUEST_ACCEPTED
-
-function(t)
-    return t[3] and (t[1] or t[2]) and not t[4] 
-end
-
-function t1()
-    if aura_env.config.turbo and C_QuestLog.IsOnQuest(87306) == true then
-        return true
-    end
-end
-
-function t2()
-    if aura_env.config.turbo and (C_QuestLog.ReadyForTurnIn(87306) or C_QuestLog.IsQuestFlaggedCompleted(87306)) == true then
-        return true
-    end
-end
-
-function t3()
-   -- id:235053
-   -- contar los objetos > 0 
-end
-
-function t4()
-    local questIDs = {
-        86923, -- Go Fish
-        86920, -- War Mode Violence
-        86924, -- Gotta Catch at Least a Few
-        87304, -- Time to Vacate
-        87303, -- Clean the Sidestreets
-        86917, -- Ship Right
-        87302, -- Rare Rival
-        86918, -- Reclaimed Scrap
-        86919, -- Side Gig
-        87305, -- Desire to D.R.I.V.E.
-        87306, -- Kaja Cruising
-        87307, -- Garbage Day
-        86915, -- Side with Cartel
-    }
-    
-    local completedCount = 0
-    for _, questID in ipairs(questIDs) do
-        if C_QuestLog.IsQuestFlaggedCompleted(questID) then
-            completedCount = completedCount + 1
-        end
-    end
-    
-    return completedCount >= 4
-end
-
-]]--

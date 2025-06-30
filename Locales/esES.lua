@@ -60,16 +60,19 @@ L["SELECT_ICON"] = "Elegir Icono"
 L["EDIT_RULE"] = "Editar Regla"
 L["STATUSTEXT_NEW_RULE"] = "Define los detalles de la regla"
 
-L["TASK_OBJECTIVE_LABEL"] = "Objetivo"                    -- esES
-L["TASK_ICON_LABEL"] = "Icono (opcional)"                 -- esES
-L["RULE_TYPE_LABEL"] = "Tipo de regla"                    -- esES
-L["RULE_ID_LABEL"] = "ID (opcional para manual)"          -- esES
+L["TASK_OBJECTIVE_LABEL"] = "Objetivo"
+L["TASK_ICON_LABEL"] = "Icono (opcional)"
+L["RULE_TYPE_LABEL"] = "Tipo de regla"
+L["RULE_ID_LABEL"] = "ID (opcional para manual)"
 
-L["RULE_MANUAL"] = "Contador manual"                      -- esES
-L["RULE_QUEST"] = "Completar misión (questID)"            -- esES
-L["RULE_ITEM"] = "Obtener objeto (itemID)"                -- esES
-L["RULE_SPELL"] = "Lanzar hechizo (spellID)"              -- esES
-L["RULE_PETCAPTURE"] = "Capturar mascotas de duelo"       -- esES
+L["RULE_MANUAL"] = "Contador manual"
+L["RULE_QUEST"] = "Completar misión (questID)"
+L["RULE_ITEM"] = "Obtener objeto (itemID)"
+L["RULE_SPELL"] = "Lanzar hechizo (spellID)"
+L["RULE_PETCAPTURE"] = "Capturar mascotas de duelo"
+
+L["RULE_SPELL_NOT_FOUND"] = "|cffff0000Hechizo no encontrado|r"
+L["RULE_SPELLID_NOT_VALID"] = "|cffff0000ID no válido|r"
 
 L["SCROLLFRAME_DEBUG"] = "scrollFrame = %s"
 
@@ -119,3 +122,10 @@ L["ENABLE_TRIGGERS"] = "Activar desencadenantes automáticos"
 L["ENABLE_TRIGGERS_DESC"] = "Permite que Counter-It active tareas automáticamente según condiciones del juego."
 L["ENABLE_TRACKING"] = "Activar seguimiento de tareas"
 L["ENABLE_TRACKING_DESC"] = "Permite que las tareas activas se muestren y actualicen en el panel de seguimiento."
+L["DEBUG_MODE"] = "Depuración (debugMode)"
+L["DEBUG_MODE_DESC"] = "Activa/desactiva el modo depuración para Counter-It."
+
+-- rules
+L["ManualRulesFixed"] = "Se han corregido reglas 'manual' sin parámetro 'count'."
+L["TemplatesReapplied"] = "Plantillas reaplicadas a %d tareas existentes."
+L["ManualRuleFixedDebug"] = "Tarea '%s': regla manual %d no tenía 'count' válido, se ha puesto a %d (goal=%s)"

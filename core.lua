@@ -3,17 +3,25 @@ local AceGUI = LibStub("AceGUI-3.0")
 local L = LibStub("AceLocale-3.0"):GetLocale("CounterIt")
 
 --*-- DB_VERSION = 1 -- hasta v0.1.3
---*-- DB_VERSION = 2 -- desde v0.1.4
-local DB_VERSION = 3 -- desde v0.1.5
+--*-- DB_VERSION = 2 -- desde v0.1.4 (cambia estructura de tasks)
+--*-- DB_VERSION = 3 -- desde v0.1.5 (IDs únicos para tasks)
+local DB_VERSION = 4 -- desde v0.1.6
 
 -- Variables compartidas entre archivos
 local globalTasks     -- nivel cuenta
 local charCounters    -- nivel personaje
 
-CounterIt.debugMode = false  -- o true para depurar
 function CounterIt:Debug(...)
-  if self.debugMode then
+  if self:IsDebugMode() then
     print("|cffffcc00[CounterIt DEBUG]|r", ...)
+  end
+end
+
+function CounterIt:ToggleDebugMode()
+  if self:IsDebugMode() then
+    print("|cffffcc00[CounterIt DEBUG]|r", "ON")
+  else
+    print("|cffffcc00[CounterIt DEBUG]|r", "OFF")
   end
 end
 
@@ -23,6 +31,9 @@ function CounterIt:IsTrackingEnabled()
   return self.db and self.db.profile and self.db.profile.enableTracking == true
 end
 
+function CounterIt:IsDebugMode()
+  return self.db and self.db.profile and self.db.profile.debugMode == true
+end
 
 --- Migra todas las tareas existentes en la base de datos al nuevo sistema basado en IDs únicos.
 --- - Asigna `task.id` a cada tarea.
@@ -69,7 +80,20 @@ function CounterIt:MigrateTasksToIDs()
   end
 
   self.db.global.tasks = newTasks
-  print(string.format("[CounterIt] Migració a sistema de IDs: %d tareas actualizadas", changed))
+  Debug(string.format("[CounterIt] Migración a sistema de IDs: %d tareas actualizadas", changed))
+end
+
+function CounterIt:MigrateSpellRulesToAutoCountRole()
+  local tasks = self.db and self.db.global and self.db.global.tasks
+  if not tasks then return end
+  -- Migración: Asegura que todas las reglas tipo "spell" tengan role = "auto-count"
+  for _, task in pairs(tasks) do
+    for _, rule in ipairs(task.rules or {}) do
+      if rule.type == "spell" and not rule.role then
+        rule.role = "auto-count"
+      end
+    end
+  end
 end
 
 function CounterIt:MigrateDatabase()
@@ -84,6 +108,11 @@ function CounterIt:MigrateDatabase()
   if db.dbVersion < 3 then
     self:MigrateTasksToIDs()
     db.dbVersion = 3
+  end
+
+  if db.dbVersion < 4 then
+    self:MigrateSpellRulesToAutoCountRole()
+    db.dbVersion = 4
   end
 
   db.dbVersion = DB_VERSION
@@ -112,6 +141,7 @@ function CounterIt:OnInitialize()
       counters = {},
       enableTracking = true,
       enableTriggers = true,
+      debugMode = false,
     },
   })
 
@@ -125,6 +155,7 @@ function CounterIt:OnInitialize()
   self:RegisterChatCommand("ci", "OpenTaskManager")
   self:RegisterChatCommand("cit", "OpenActiveTasksMonitor")
   self:RegisterChatCommand("citreset", "ResetActiveTasks")
+  self:RegisterChatCommand("citdbg", "ToggleDebugMode")
 
   -- Minimapa y DataBroker
   local LDB = LibStub("LibDataBroker-1.1"):NewDataObject("CounterIt", {
@@ -170,12 +201,14 @@ function CounterIt:ResetActiveTasks()
 end
   
 function CounterIt:HandleAutoTrigger(id)
+  self:Debug('HandleAutoTrigger', id)
   if self:IsTemplate(id) then
     local task = self:CreateTaskFromTemplate(id)
-    if task then
+    if task and task.id then
+      self:Debug('ActivateTask(task.id)', task.id)
       self:ActivateTask(task.id)
     else
-      --print("HandleAutoTrigger: Tarea duplicada con ID: " .. tostring(id))
+      self:Debug("HandleAutoTrigger: Tarea duplicada con ID: " .. tostring(id))
     end
   elseif self:TaskExists(id) then
     self:ActivateTask(id)

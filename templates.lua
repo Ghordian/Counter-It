@@ -15,6 +15,7 @@ CounterIt.taskTemplates = {
     step = 1,
     rules = {
       { type = "quest", questID = 86915, role = "completion" },
+      { type = "item", itemID = 235053, count = 1, role = "completion" },
     },
   },
   ["ship-right"] = {
@@ -28,6 +29,7 @@ CounterIt.taskTemplates = {
     rules = {
       { type = "manual", count = 10 },
       { type = "quest", questID = 86917, role = "completion" },
+      { type = "item", itemID = 235053, count = 1, role = "completion" },
     },
   },
   ["reclaimed-scrap"] = {
@@ -41,6 +43,7 @@ CounterIt.taskTemplates = {
     rules = {
       { type = "currency", itemID = 3218, count = 100, role = "auto-count", url = "https://www.wowhead.com/currency=3218/empty-kajacola-can" },
       { type = "quest", questID = 86918, role = "completion" },
+      { type = "item", itemID = 235053, count = 1, role = "completion" },
     },
   },
   ["side-gig"] = {
@@ -53,6 +56,7 @@ CounterIt.taskTemplates = {
     step = 4,
     rules = {
       { type = "quest", questID = 86919, role = "completion" },
+      { type = "item", itemID = 235053, count = 1, role = "completion" },
     },
   },
   ["war-mode-violence"] = {
@@ -66,6 +70,7 @@ CounterIt.taskTemplates = {
     rules = {
       { type = "manual", count = 5 },
       { type = "quest", questID = 86920, role = "completion" },
+      { type = "item", itemID = 235053, count = 1, role = "completion" },
     },
   },
   ["go-fish"] = {
@@ -84,6 +89,7 @@ CounterIt.taskTemplates = {
       { type = "object", object = 457157, role = "auto-count" },
       { type = "manual", count = 50 },
       { type = "quest", questID = 86923, role = "completion" },
+      { type = "item", itemID = 235053, count = 1, role = "completion" },
     },
   },
   ["gotta-catch-at-least-a-few"] = {
@@ -97,6 +103,7 @@ CounterIt.taskTemplates = {
     rules = {
       { type = "petcapture", count = 5, role = "auto-count" },
       { type = "quest", questID = 86924, role = "completion" },
+      { type = "item", itemID = 235053, count = 1, role = "completion" },
     },
   },
   ["rare-rivals"] = {
@@ -110,6 +117,7 @@ CounterIt.taskTemplates = {
     rules = {
       { type = "manual", count = 3 },
       { type = "quest", questID = 87302, role = "completion" },
+      { type = "item", itemID = 235053, count = 1, role = "completion" },
     },
   },
   ["clean-the-sidestreets"] = { --  Sidestreet Sluice Delve.
@@ -122,6 +130,7 @@ CounterIt.taskTemplates = {
     step = 9,
     rules = {
       { type = "quest", questID = 87303, role = "completion" },
+      { type = "item", itemID = 235053, count = 1, role = "completion" },
     },
   },
   ["time-to-vacate"] = { -- Excavation Site 9 Delve.
@@ -134,6 +143,7 @@ CounterIt.taskTemplates = {
     step = 10,
     rules = {
       { type = "quest", questID = 87304, role = "completion" },
+      { type = "item", itemID = 235053, count = 1, role = "completion" },
     },
   },
   ["desire-to-d-r-i-v-e"] = {
@@ -147,6 +157,7 @@ CounterIt.taskTemplates = {
     rules = {
       { type = "manual", count = 2 },
       { type = "quest", questID = 87305, role = "completion" },
+      { type = "item", itemID = 235053, count = 1, role = "completion" },
     },
   },
   ["kaja-cruising"] = {
@@ -160,6 +171,7 @@ CounterIt.taskTemplates = {
     rules = {
       { type = "manual", count = 50 },
       { type = "quest", questID = 87306, role = "completion" },
+      { type = "item", itemID = 235053, count = 1, role = "completion" },
     },
   },
   ["garbage-day"] = {
@@ -176,11 +188,12 @@ CounterIt.taskTemplates = {
       { type = "spell", spellID = 6247, role = "auto-count" },
       { type = "manual", count = 25 },
       { type = "quest", questID = 87307, role = "completion" },
+      { type = "item", itemID = 235053, count = 1, role = "completion" },
     },
   },
 }
 
--- Selector visual de plantillas
+--- Abre el selector visual para elegir una plantilla de tarea predefinida.
 function CounterIt:OpenTemplateSelector()
   local frame = AceGUI:Create("Frame")
   frame:SetTitle(L["TITLE_SELECT_TEMPLATE"])
@@ -202,7 +215,9 @@ function CounterIt:OpenTemplateSelector()
   end
 end
 
--- Crear una tarea basada en una plantilla
+--- Crea una nueva tarea en base a una plantilla predefinida.
+---@param name string         -- ID de la plantilla.
+---@return TaskData?          -- Tarea creada (o nil si falla).
 function CounterIt:CreateTaskFromTemplate(name)
   local template = self.taskTemplates[name]
   if not template then
@@ -217,6 +232,7 @@ function CounterIt:CreateTaskFromTemplate(name)
     return -- evitar duplicados
   end
 
+  ---@type TaskData
   local newTask = {
     id = taskID,
     description = template.description,
@@ -237,9 +253,12 @@ function CounterIt:CreateTaskFromTemplate(name)
   if self.taskManagerFrame then
     self:RenderAllTasks()
   end
+
+  return newTask
 end
 
--- Verificar tareas basadas en misiones ya completadas
+--- Marca reglas de tipo "quest" como completadas si el jugador ya completó la quest.
+---@return nil
 function CounterIt:CheckCompletedQuestsAgainstTasks()
   local completed = C_QuestLog.GetAllCompletedQuestIDs()
   if not completed then return end
