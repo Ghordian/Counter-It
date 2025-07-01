@@ -260,21 +260,32 @@ end
 --- Marca reglas de tipo "quest" como completadas si el jugador ya completó la quest.
 ---@return nil
 function CounterIt:CheckCompletedQuestsAgainstTasks()
-  local completed = C_QuestLog.GetAllCompletedQuestIDs()
-  if not completed then return end
+  local completedQuestIDs = C_QuestLog.GetAllCompletedQuestIDs()
+  if not completedQuestIDs then return end
 
+  local needRefresh = false
   local tasks = self.globalTasks()
+  local charTasks = self.charDb.char.tasks
   for taskID, task in pairs(tasks) do
-    if task.active and not task.completed and task.rules then
-      for _, rule in ipairs(task.rules) do
-        if rule.type == "quest" and tContains(completed, rule.questID) then
-          rule.progress = rule.count or 1
-          self:EvaluateTaskCompletion(taskID, task)
+    local st = charTasks[taskID]
+    if st.active and not st.completed and task.rules then
+      local needsUpdate = false
+      for idx, rule in ipairs(task.rules) do
+        if rule.type == "quest" and tContains(completedQuestIDs, rule.questID) then
+        --rule.progress = rule.count or 1
+        --self:EvaluateTaskCompletion(taskID, task)
+          needsUpdate = true
         end
+      end
+      if needsUpdate then
+        self:UpdateTaskProgress(taskID, task)
+        needRefresh = true
       end
     end
   end
-  self:RenderActiveTasks()
+  if needRefresh then
+    self:RenderActiveTasks()
+  end
 end
 
 --[[

@@ -130,8 +130,22 @@ function CounterIt:OpenTaskManager()
   activateButton:SetWidth(BUTTON_WIDTH)
   activateButton:SetCallback("OnClick", function()
     if self.selectedTaskID then
-      local tasks = self.globalTasks()
-      tasks[self.selectedTaskID].active = true -- taskID
+    --local tasks = self.globalTasks()
+    --tasks[self.selectedTaskID].active = true -- taskID
+
+      local charTasks = self.charDb.char.tasks
+      if not charTasks[self.selectedTaskID] then
+        charTasks[self.selectedTaskID] = {
+          taskID = self.selectedTaskID,
+          active = true,
+          completed = false,
+          progressManual = 0,
+          rulesProgress = {},
+        }
+      else
+        charTasks[self.selectedTaskID].active = true
+      end
+
       self.selectedTaskID = nil
       self:RenderAllTasks()
       if self.activeMonitorFrame then self:RenderActiveTasks() end
@@ -155,17 +169,19 @@ function CounterIt:OpenTaskManager()
   deleteButton:SetCallback("OnClick", function()
     if self.selectedTaskID then
       local tasks = self.globalTasks()
+      local charTasks = self.charDb.char.tasks
       local taskID = self.selectedTaskID -- taskID
-      local taskName = tasks[taskID].description
+      local taskName = tasks[taskID] and tasks[taskID].description or ""
       StaticPopupDialogs["COUNTERIT_CONFIRM_DELETE"] = {
         text = L["CONFIRM_DELETE_TASK"],
         button1 = L["YES"],
         button2 = L["CANCEL"],
         OnAccept = function()
-          local tasks = self.globalTasks()
-          local counters = self.charCounters()
+        --local tasks = self.globalTasks()
           tasks[taskID] = nil -- taskID
-          counters[taskID] = nil -- taskID
+        --local counters = self.charCounters()
+        --counters[taskID] = nil -- taskID
+          charTasks[taskID] = nil
           self.selectedTaskID = nil
           self:RenderAllTasks()
         end,
@@ -193,18 +209,33 @@ function CounterIt:RenderAllTasks()
   group:ReleaseChildren()
 
   local tasks = self.globalTasks()
+  local charTasks = self.charDb.char.tasks or {}
+
   for taskID, task in pairs(tasks) do
     local row = AceGUI:Create("SimpleGroup")
     row:SetLayout("Flow")
     row:SetFullWidth(true)
     row:SetHeight(30)
 
+    local st = charTasks[taskID]
+
     -- Check de activación
     local check = AceGUI:Create("CheckBox")
-    check:SetValue(task.active)
+    check:SetValue(st and st.active or false) -- task.active
     check:SetWidth(24)
     check:SetCallback("OnValueChanged", function(widget, event, value)
-      task.active = value
+    --task.active = value
+      if not charTasks[taskID] then
+        charTasks[taskID] = {
+          taskID = taskID,
+          active = value,
+          completed = false,
+          progressManual = 0,
+          rulesProgress = {},
+        }
+      else
+        charTasks[taskID].active = value
+      end
       self:UpdateTaskProgress(taskID, task) -- name
       if self.activeMonitorFrame then 
         self:RenderActiveTasks()
@@ -416,16 +447,20 @@ function CounterIt:RenderActiveTasks()
   self.activeTasksFrame = container
 
   local tasks = self.globalTasks()
-  local counters = self.charCounters()
+--local counters = self.charCounters()
+  local charTasks = self.charDb.char.tasks or {}
 
   local lastRow
   for taskID, task in pairs(tasks) do
-    if task.active then
+  --if task.active then
+    local st = charTasks[taskID]
+    if st and st.active then
       local row = CreateFrame("Frame", nil, container)
       row:SetSize(container:GetWidth(), 28)
       row:SetPoint("TOPLEFT", lastRow or container, lastRow and "BOTTOMLEFT" or "TOPLEFT", 0, lastRow and -4 or 0)
 
       local hasManualRule = self:TaskAllowsManualControl(task)
+      local progress = st.progressManual or 0
 
       -- Botones: -, +, R, P
       local function createButton(label, xOffset, onClick)
@@ -438,15 +473,18 @@ function CounterIt:RenderActiveTasks()
       end
 
       local btnDec = createButton("-", 4, function()
-        counters[taskID] = math.max(0, (counters[taskID] or 0) - 1)
+      --counters[taskID] = math.max(0, (counters[taskID] or 0) - 1)
+        st.progressManual = math.max(0, (st.progressManual or 0) - 1)
         self:UpdateTaskProgress(taskID, task)
         self:RenderActiveTasks()
       end)
       btnDec:SetEnabled(hasManualRule)
 
       local btnInc = createButton("+", 32, function()
-        if (counters[taskID] or 0) < task.goal then
-          counters[taskID] = (counters[taskID] or 0) + 1
+      --if (counters[taskID] or 0) < task.goal then
+        if st.progressManual < (task.goal or 1) then
+        --counters[taskID] = (counters[taskID] or 0) + 1
+          st.progressManual = (st.progressmanual or 0) + 1
           self:UpdateTaskProgress(taskID, task)
           self:RenderActiveTasks()
         end
@@ -454,8 +492,10 @@ function CounterIt:RenderActiveTasks()
       btnInc:SetEnabled(hasManualRule)
 
       local btnReset = createButton("R", 60, function()
-        counters[taskID] = 0
-        task.completed = false
+        st.progressManual = 0
+        st.completed = false
+      --counters[taskID] = 0
+      --task.completed = false
         local bRefresh = self:UpdateTaskProgress(taskID, task, true)
         if bRefresh then
           self:Print("Reset on", taskID)
@@ -464,7 +504,8 @@ function CounterIt:RenderActiveTasks()
       end)
 
       local btnPause = createButton("P", 88, function()
-        task.active = false
+      --task.active = false
+        st.active = false
         self:RenderActiveTasks()
         if self.taskManagerFrame then
           self:RenderAllTasks()
@@ -483,10 +524,10 @@ function CounterIt:RenderActiveTasks()
       local textCount = CreateFrame("Frame", nil, row)
       textCount:SetSize(50, 24)
       local label = textCount:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-      local progress = (counters[taskID] or 0)
+      local progress = (st.progressManual or 0)
       --progress = self:GetTaskProgress(task, progress)--REJECTED--TODO
-      label:SetText(progress .. " / " .. task.goal)
-      label:SetTextColor(task.completed and 0 or 1, task.completed and 1 or 1, 0)
+      label:SetText(progress .. " / " .. task.goal or 1)
+      label:SetTextColor(st.completed and 0 or 1, st.completed and 1 or 1, 0)
       label:SetAllPoints(true)
       textCount:SetPoint("LEFT", icon, "RIGHT", 8, 0)
 

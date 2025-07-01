@@ -337,9 +337,12 @@ function CounterIt:CheckSpellCast(spellID, target)
   --self:Debug(format(L["SPELLCAST_NAME"], tostring(target or "n/a")))
   end
   local needRefresh = false
+  local charTasks = self.charDb.char.tasks
+
   for taskID, task in pairs(self.globalTasks()) do
-    if task.active and not task.completed and task.rules then
-      for _, rule in ipairs(task.rules) do
+    local st = charTasks[taskID]
+    if st and st.active and not st.completed and task.rules then
+      for idx, rule in ipairs(task.rules) do
         if rule.type == "spell" and rule.role == "auto-count" then
           local match = false
           if tonumber(rule.spellID) and tonumber(spellID) and tonumber(rule.spellID) == tonumber(spellID) then
@@ -347,9 +350,10 @@ function CounterIt:CheckSpellCast(spellID, target)
           end
 
           if match then
-            local counters = self.charCounters()
-            counters[taskID] = (counters[taskID] or 0) + 1
-            self:CheckRuleCompletion(rule, task)
+          --local counters = self.charCounters()
+          --counters[taskID] = (counters[taskID] or 0) + 1
+            st.progressManual = (st.progressManual or 0) + 1
+          --self:CheckRuleCompletion(rule, task)
           --self:EvaluateTaskCompletion(taskID, task)
             self:UpdateTaskProgress(taskID, task)
           --self:Debug( format(L["SPELLCAST_MATCH"], tostring(spellID)), tonumber(counters[taskID]))
@@ -375,41 +379,55 @@ end
 --- Evalúa reglas de quest para una questID dada.
 ---@param questID number
 function CounterIt:EvaluateQuestRules(questID)
-  local counters = self.charCounters()
+  local needRefresh = false
+  local charTasks = self.charDb.char.tasks
+--local counters = self.charCounters()
   for taskID, task in pairs(self.globalTasks()) do
-    if task.active and not task.completed and task.rules then
-      for _, rule in ipairs(task.rules) do
+    local st = charTasks[taskID]
+    if st and st.active and not st.completed and task.rules then
+      for idx, rule in ipairs(task.rules) do
         if rule.type == "quest" then
           if tonumber(rule.questID) and tonumber(questID) and tonumber(rule.questID) == tonumber(questID) then
-            rule.progress = (rule.progress or 0) + 1
-            counters[taskID] = (counters[taskID] or 0) + 1
-            self:EvaluateTaskCompletion(taskID, task)
+          --rule.progress = (rule.progress or 0) + 1
+            st.progressManual = (st.progressManual or 0) + 1
+          --self:EvaluateTaskCompletion(taskID, task)
+            self:UpdateTaskProgress(taskID, task)
             self:Debug(format(L["QUEST_MATCH"], tostring(questID)))
+            needRefresh = true
           end
         end
       end
     end
   end
-  self:RenderActiveTasks()  
+  if needRefresh then
+    self:RenderActiveTasks()  
+  end
 end
 
 --- Procesa la captura de mascota y actualiza el progreso de tareas asociadas.
 function CounterIt:HandlePetBattleCaptured()
   if not self:IsTrackingEnabled() then return end
 
-  local counters = self.charCounters()
+  local needRefresh = false
+--local counters = self.charCounters()
+  local charTasks = self.charDb.char.tasks
   for taskID, task in pairs(self.globalTasks()) do
-    if task.active and task.rules then
-      for _, rule in ipairs(task.rules) do
-        if rule.type == "petcapture" and not rule.completed then
-          counters[taskID] = (counters[taskID] or 0) + 1
-          self:EvaluateRule(taskID, task, rule)
+    local st = charTasks[taskID]
+    if st and st.active and task.rules then
+      for idx, rule in ipairs(task.rules) do
+        if rule.type == "petcapture" then -- and not rule.completed 
+        --counters[taskID] = (counters[taskID] or 0) + 1
+          st.progressManual = (st.progressManual or 0) + 1
+        --self:EvaluateRule(taskID, task, idx) -- rule
+          needRefresh = true
         end
       end
       self:UpdateTaskProgress(taskID, task)
     end
   end
-  self:RenderActiveTasks()
+  if needRefresh then
+    self:RenderActiveTasks()
+  end
 end
 
 --- Escanea el inventario en busca de nuevos objetos recibidos y actualiza tareas asociadas.
@@ -431,7 +449,7 @@ end
 ---@param itemID number
 ---@param count number
 function CounterIt:OnItemReceived(itemID, count)
-  Print("OnItemReceived", itemID, count)
+  Debug("OnItemReceived", itemID, count)
   -- Regla global primero (activación automática)
   local templates = self.AutoTrigger and self.AutoTrigger:GetTaskFromEvent("ITEM_RECEIVED", itemID)
   if templates then
@@ -440,19 +458,26 @@ function CounterIt:OnItemReceived(itemID, count)
     end
   end
 
+  local needRefresh = false
   -- Evaluación de tareas activas con regla "item"
+  local charTasks = self.charDb.char.tasks
   for taskID, task in pairs(self.globalTasks()) do
-    if task.active and not task.completed and task.rules then
-      for _, rule in ipairs(task.rules) do
+    local st = charTasks[taskID]
+    if st and st.active and not st.completed and task.rules then
+      for idx, rule in ipairs(task.rules) do
         if rule.type == "item" and tonumber(rule.itemID) == itemID then
-          rule.progress = (rule.progress or 0) + count
-          self:EvaluateTaskCompletion(taskID, task)
+        --rule.progress = (rule.progress or 0) + count
+        --self:EvaluateTaskCompletion(taskID, task)
+          self:UpdateTaskProgress(taskID, task)
           self:Print(format("Item %d recibido para tarea: %s", itemID, taskID))
+          needRefresh = true
         end
       end
     end
   end
-  self:RenderActiveTasks()
+  if needRefresh then
+    self:RenderActiveTasks()
+  end
 end
 
 --- Al loguear, activa triggers automáticos de misiones presentes en el personaje.
@@ -507,19 +532,22 @@ function CounterIt:CheckQuestRulesForActiveTasks()
   if not self:IsTrackingEnabled() then return end
 
   local tasks = self.globalTasks() or {}
+   local charTasks = self.charDb.char.tasks
   local questCount = 0
   for taskID, task in pairs(tasks) do
-    if task.active and task.rules then
-      for _, rule in ipairs(task.rules) do
+    local st = charTasks[taskID]
+    if st and st.active and task.rules then
+      for idx, rule in ipairs(task.rules) do
         if rule.type == "quest" and rule.questID then
           if C_QuestLog.ReadyForTurnIn(rule.questID) or C_QuestLog.IsQuestFlaggedCompleted(rule.questID) then
             questCount = questCount + 1
-            rule.progress = rule.count or 1
-            self:EvaluateRule(taskID, task, rule)
+          --rule.progress = rule.count or 1
+          --self:EvaluateRule(taskID, task, idx) -- rule
+            self:UpdateTaskProgress(taskID, task)
           end
         end
       end
-      self:EvaluateTaskCompletion(taskID, task)
+    --self:EvaluateTaskCompletion(taskID, task)
     end
   end
   if questCount > 0 then
@@ -554,11 +582,15 @@ end
 --- Actualiza el progreso de todas las tareas activas.
 function CounterIt:UpdateTasks()
   local tasks = self.globalTasks()
+  local charTasks = self.charDb.char.tasks
   local taskCount = 0
   for taskID, task in pairs(tasks) do
-    local bCompleted = self:UpdateTaskProgress(taskID, task, false)
-    if bCompleted then
-      taskCount = taskCount + 1
+    local st = charTasks[taskID]
+    if st then
+      local bCompleted = self:UpdateTaskProgress(taskID, task, false)
+      if bCompleted then
+        taskCount = taskCount + 1
+      end
     end
   end
   if taskCount > 0 then
@@ -570,12 +602,14 @@ end
 ---@return boolean  -- true si alguna tarea ha sido pausada y es necesario refrescar la UI, false si no hubo cambios
 function CounterIt:AutoPauseTasksByInventory()
   local bDone = false
+  local charTasks = self.charDb.char.tasks
   for taskID, task in pairs(self.globalTasks()) do
-    if task.active and not task.completed and task.rules then
-      for _, rule in ipairs(task.rules) do
+    local st = charTasks[taskID]
+    if st and st.active and not st.completed and task.rules then
+      for idx, rule in ipairs(task.rules) do
         if rule.type == "item" and rule.itemID then
           if not self:HasItem(rule.itemID) then
-            task.active = false
+            st.active = false
             self:Debug("Tarea '"..taskID.."' pausada automáticamente: objeto "..rule.itemID.." no están el inventario.")
             -- Solo pausar la tarea una vez y salir del bucle de reglas
             bDone = true 

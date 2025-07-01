@@ -5,11 +5,12 @@ local L = LibStub("AceLocale-3.0"):GetLocale("CounterIt")
 --*-- DB_VERSION = 1 -- hasta v0.1.3
 --*-- DB_VERSION = 2 -- desde v0.1.4 (cambia estructura de tasks)
 --*-- DB_VERSION = 3 -- desde v0.1.5 (IDs únicos para tasks)
-local DB_VERSION = 4 -- desde v0.1.6
+--*-- DB_VERSION = 4 -- desde v0.1.6
+local DB_VERSION = 5 -- desde v0.1.7
 
 -- Variables compartidas entre archivos
 local globalTasks     -- nivel cuenta
-local charCounters    -- nivel personaje
+--local charCounters    -- nivel personaje
 
 function CounterIt:Debug(...)
   if self:IsDebugMode() then
@@ -96,6 +97,64 @@ function CounterIt:MigrateSpellRulesToAutoCountRole()
   end
 end
 
+--- Limpia los campos de progreso y estado de las tareas globales.
+function CounterIt:CleanupGlobalTaskStates()
+  local tasks = self.db.global.tasks
+  if not tasks then return end
+
+  local anyCleared = false
+  for _, task in pairs(tasks) do
+    if task.active or task.completed then 
+      anyCleared = true
+    end
+    -- Borra estado de tarea global
+    task.active = nil
+    task.completed = nil
+    -- Borra estado de reglas globales
+    if task.rules then
+      for _, rule in ipairs(task.rules) do
+        if rule.progress or rule.completed then 
+          anyCleared = true
+        end
+        rule.progress = nil
+        rule.completed = nil
+      end
+    end
+  end
+  return anyCleared
+end
+
+--- Migra el progreso manual desde charCounters a la nueva estructura de estado por tarea/personaje.
+function CounterIt:MigrateCharCountersToTaskState()
+  local charDb = self.charDb.char
+  if not charDb then return end
+
+  -- Inicializar tasks si no existe
+  if not charDb.tasks then
+    charDb.tasks = {}
+  end
+
+  local counters = charDb.counters or {}
+  local charTasks = charDb.tasks
+
+  for taskID, progress in pairs(counters) do
+    if not charTasks[taskID] then
+      charTasks[taskID] = {
+        taskID = taskID,
+        active = false,
+        completed = false,
+        progressManual = progress or 0,
+        rulesProgress = {},
+      }
+    else
+      charTasks[taskID].progressManual = progress or 0
+    end
+  end
+
+  -- Borra la antigua tabla counters tras migrar
+  charDb.counters = nil
+end
+
 function CounterIt:MigrateDatabase()
   local db = self.db.global
   if not db.dbVersion then db.dbVersion = 1 end
@@ -113,6 +172,15 @@ function CounterIt:MigrateDatabase()
   if db.dbVersion < 4 then
     self:MigrateSpellRulesToAutoCountRole()
     db.dbVersion = 4
+  end
+
+  if db.dbVersion < 5 then
+    local anyCleared = self:CleanupGlobalTaskStates()
+    if anyCleared then
+      self:Print("|cffffcc00[Counter-It]|r ", L["MIGRATION_CLEANED_GLOBAL_PROGRESS"])
+    end
+    self:MigrateCharCountersToTaskState()
+    db.dbVersion = 5
   end
 
   db.dbVersion = DB_VERSION
@@ -135,18 +203,20 @@ function CounterIt:OnInitialize()
 
   self:ValidateManualRules()
 
+  globalTasks = self.db.global.tasks
+
   -- DB por personaje
   self.charDb = LibStub("AceDB-3.0"):New("CounterItCharData", {
     char = {
-      counters = {},
+    --counters = {},--rejected db < 5
+      tasks = {},
       enableTracking = true,
       enableTriggers = true,
       debugMode = false,
     },
   })
 
-  globalTasks = self.db.global.tasks
-  charCounters = self.charDb.char.counters
+--charCounters = self.charDb.char.counters-- rejected
 
   self:MigrateDatabase() -- v0.1.5
 
@@ -219,6 +289,22 @@ end
 
 -- Exponer referencias para otros módulos
 CounterIt.globalTasks = function() return globalTasks end
-CounterIt.charCounters = function() return charCounters end
+
+--[[
+-- CounterIt.charCounters = function() return charCounters end -- To-Be-Deleted
+
+creo que es mucho cambio cuando aún no sabemos/podemos activar una tarea por personaje! 
+De momento lo anoto como pendiente, y regresaremos a ello en un cuarto paso, 
+sigamos pues con el tercer paso, ok?
+
+local charTasks = self.charDb.char.tasks
+if not charTasks[taskID] then
+  charTasks[taskID] = { ... inicializar ... }
+end
+charTasks[taskID].progressManual = ...
+
+local progress = charTasks[taskID] and charTasks[taskID].progressManual or 0
+
+]]--
 
 -- core.lua -- fin del archivo
