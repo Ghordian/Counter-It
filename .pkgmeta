@@ -1,20 +1,35 @@
-package-as: CounterIt
+# .pkgmeta - configuración de empaquetado para CurseForge
 
+# Opcional: Cambia el nombre final del ZIP (por defecto usa el "slug" del proyecto)
+package-as: Counter-It
+
+# Incluye tu licencia en el zip (opcional)
+license-output: LICENSE
+
+# Sección para incluir/mover archivos en el ZIP final
+move-folders:
+  Counter-It: Counter-It
+
+# Ignora carpetas/archivos no necesarios en el ZIP final
 ignore:
   - .git
-  - .release
   - .github
+  - .gitignore
+  - .vscode
   - README.md
-  - *.bat
+  - docs
+  - tests
+  - "*.psd"
+  - "*.bak"
+  - "*.zip"
+  - "*.wowproj"
+  - "*.user"
 
+# Incluir librerías externas de otros proyectos (ejemplo con Ace3)
 externals:
-  Libs/Ace3:
+  libs/Ace3:
     url: https://repos.wowace.com/wow/ace3/trunk
     tag: latest
-  Libs/LibStub:
-    url: https://repos.wowace.com/wow/libstub/trunk
-  Libs/CallbackHandler-1.0:
-    url: https://repos.wowace.com/wow/callbackhandler/trunk
 
-move-folders:
-  CounterIt: .
+# Puedes incluir un changelog personalizado para el ZIP (si no, usa el commit message)
+changelog: CHANGELOG.txt
