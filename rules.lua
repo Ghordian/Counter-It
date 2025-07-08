@@ -14,7 +14,13 @@ local function getTasks() return CounterIt.globalTasks() end
 --- @param idx number              -- Índice de la regla
 function CounterIt:EvaluateRule(taskID, task, idx)
   local charTasks = self.charDb.char.tasks
-  if not charTasks or not charTasks[taskID] then return false end
+  if not charTasks or not charTasks[taskID] then 
+    return false 
+  end
+
+  if self.traceMode == true then
+    self:Debug("EvaluateRule;", taskID, "rule;", idx)
+  end
 
   local st = charTasks[taskID]
   local rule = task.rules and task.rules[idx]
@@ -121,6 +127,10 @@ local function EvaluateTaskCompletion(st, task)
     return
   end
 
+  if CounterIt.traceMode == true then
+    CounterIt:Debug("EvaluateTaskCompletion;", task.id)
+  end
+
   local hasCompletionRules = false
   local allCompletionPassed = true
 
@@ -207,7 +217,13 @@ end
 --- @return boolean                    -- true si la tarea está completada tras actualizar, false si no
 function CounterIt:UpdateTaskProgress(taskID, task, reset)
   local charTasks = self.charDb.char.tasks
-  if not charTasks or not charTasks[taskID] then return false end
+  if not charTasks or not charTasks[taskID] then 
+    return false 
+  end
+
+  if self.traceMode == true then
+    self:Debug("UpdateTaskProgress;", taskID, "reset;", reset)
+  end
 
   local st = charTasks[taskID]
   if reset then

@@ -5,7 +5,7 @@
 ## Notes-esES: Seguimiento de tareas personalizadas con contadores manuales
 
 ## Author: Ghordjan
-## Version: 0.1.7
+## Version: 0.1.8
 
 ## X-WoWI-ID:26938
 ## X-Curse-Project-ID: 1289207

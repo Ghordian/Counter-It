@@ -146,9 +146,12 @@ function CounterIt:OpenTaskManager()
         charTasks[self.selectedTaskID].active = true
       end
 
-      self.selectedTaskID = nil
-      self:RenderAllTasks()
-      if self.activeMonitorFrame then self:RenderActiveTasks() end
+    --self.selectedTaskID = nil -- rejected
+    --self:RenderAllTasks()     -- rejected
+      self:UpdateTaskManagerSelectionDisplay()
+      if self.activeMonitorFrame then 
+        self:RenderActiveTasks() 
+      end
     end
   end)
   bottomGroup:AddChild(activateButton)
@@ -211,6 +214,11 @@ function CounterIt:RenderAllTasks()
   local tasks = self.globalTasks()
   local charTasks = self.charDb.char.tasks or {}
 
+  -- Almacena una referencia al widget de cada tarea para poder manipularlo más tarde
+  -- Esto es crucial para la actualización de selección sin recargar toda la lista
+  self.taskWidgets = self.taskWidgets or {}
+  wipe(self.taskWidgets) -- Limpiar referencias antiguas antes de recrear
+
   for taskID, task in pairs(tasks) do
     local row = AceGUI:Create("SimpleGroup")
     row:SetLayout("Flow")
@@ -237,9 +245,11 @@ function CounterIt:RenderAllTasks()
         charTasks[taskID].active = value
       end
       self:UpdateTaskProgress(taskID, task) -- name
-      if self.activeMonitorFrame then 
+      if self.activeMonitorFrame then
         self:RenderActiveTasks()
       end
+      -- Después de cambiar el estado de activa/pausada, la lista puede cambiar, así que:
+      -- TBD - self:RenderAllTasks() -- Llama a RenderAllTasks para una reconstrucción completa si la visibilidad cambia
     end)
     row:AddChild(check)
 
@@ -257,7 +267,13 @@ function CounterIt:RenderAllTasks()
     label:SetFontObject(GameFontNormal)
     label:SetWidth(260)
     label:SetHeight(30)
-    label:SetColor(self.selectedTaskID == taskID and 1 or 1, self.selectedTaskID == taskID and 1 or 1, self.selectedTaskID == taskID and 0 or 1)
+    -- El color inicial se establece aquí, la función de actualización de selección lo cambiará
+    label:SetColor(1, 1, 1) -- Color blanco por defecto
+    label.originalColor = {1, 1, 1} -- Guardar el color original para restaurar
+--  label:SetColor(self.selectedTaskID == taskID and 1 or 1, self.selectedTaskID == taskID and 1 or 1, self.selectedTaskID == taskID and 0 or 1)
+
+    -- Asigna una referencia al label dentro de la fila, para poder acceder a él desde fuera
+    row.labelWidget = label
 
     label:SetCallback("OnEnter", function(widget)
       GameTooltip:SetOwner(widget.frame, "ANCHOR_RIGHT")
@@ -270,18 +286,44 @@ function CounterIt:RenderAllTasks()
     label:SetCallback("OnLeave", GameTooltip_Hide)
     label:SetCallback("OnClick", function()
       self.selectedTaskID = taskID -- name
-      self:RenderAllTasks()
+    --self:RenderAllTasks()--REJECTED
+      self:UpdateTaskManagerSelectionDisplay() -- ¡Nueva llamada!
     end)
 
     row:AddChild(label)
     group:AddChild(row)
+
+    -- Guarda la referencia a la fila para poder acceder a ella por taskID
+    self.taskWidgets[taskID] = row
   end
+
+  -- Después de que todas las filas han sido creadas (o recreadas)
+  -- Llama a la función para establecer el color de selección inicial
+  self:UpdateTaskManagerSelectionDisplay()
 
   -- Espaciador inferior
   local spacer = AceGUI:Create("Label")
   spacer:SetFullWidth(true)
   spacer:SetText(" ")
   group:AddChild(spacer)
+end
+
+--- ACTUALIZADA: Función para actualizar el color de selección de las tareas en el gestor.
+function CounterIt:UpdateTaskManagerSelectionDisplay()
+  if not self.pausedTasksScrollFrame or not self.taskWidgets then return end
+
+  -- Recorre solo los widgets que AceGUI ha añadido al scrollFrame
+  -- (estos son los 'row' SimpleGroups que creaste)
+  for taskID, rowWidget in pairs(self.taskWidgets) do
+    if rowWidget.labelWidget then
+      -- Aplica el color amarillo si es la tarea seleccionada, blanco si no lo es
+      if taskID == self.selectedTaskID then
+        rowWidget.labelWidget:SetColor(1, 1, 0) -- Amarillo
+      else
+        rowWidget.labelWidget:SetColor(rowWidget.labelWidget.originalColor[1], rowWidget.labelWidget.originalColor[2], rowWidget.labelWidget.originalColor[3]) -- Restaurar color original
+      end
+    end
+  end
 end
 
 --- Añade la botonera superior (crear, plantilla, monitor) al gestor de tareas.
@@ -330,6 +372,8 @@ function CounterIt:OpenActiveTasksMonitor()
     self.activeMonitorFrame:Show()
     return
   end
+
+  -- update
 
   local pos = self.db.global.activeMonitorFrame or {}
   local frame = CreateFrame("Frame", "CounterItMonitorFrame", UIParent, "BackdropTemplate")
@@ -475,6 +519,7 @@ function CounterIt:RenderActiveTasks()
       local btnDec = createButton("-", 4, function()
       --counters[taskID] = math.max(0, (counters[taskID] or 0) - 1)
         st.progressManual = math.max(0, (st.progressManual or 0) - 1)
+        self:Debug("btnDec", st.progressManual)
         self:UpdateTaskProgress(taskID, task)
         self:RenderActiveTasks()
       end)
@@ -482,9 +527,9 @@ function CounterIt:RenderActiveTasks()
 
       local btnInc = createButton("+", 32, function()
       --if (counters[taskID] or 0) < task.goal then
-        if st.progressManual < (task.goal or 1) then
+        if (st.progressManual or 0) < (task.goal or 1) then
         --counters[taskID] = (counters[taskID] or 0) + 1
-          st.progressManual = (st.progressmanual or 0) + 1
+          st.progressManual = (st.progressManual or 0) + 1
           self:UpdateTaskProgress(taskID, task)
           self:RenderActiveTasks()
         end
@@ -492,6 +537,7 @@ function CounterIt:RenderActiveTasks()
       btnInc:SetEnabled(hasManualRule)
 
       local btnReset = createButton("R", 60, function()
+        self:Debug("btnReset", st.progressManual)
         st.progressManual = 0
         st.completed = false
       --counters[taskID] = 0
@@ -581,7 +627,7 @@ function CounterIt:RenderRules(rulesGroup, task, taskID) -- existingTaskName
     delBtn:SetText(L["DELETE"])
     delBtn:SetWidth(80)
     delBtn:SetCallback("OnClick", function()
-      table.remove(task.rules, i)
+      table.remove(task.rules, idx) -- Cambiado 'i' por 'idx'
       self:RenderRules(rulesGroup, task, taskID) -- existingTaskName
     end)
     ruleContainer:AddChild(delBtn)
@@ -791,13 +837,29 @@ function CounterIt:OpenRuleEditor(task, existingRule, callback)
     end
   end)
 
+  local roleDropdown = AceGUI:Create("Dropdown")
+  roleDropdown:SetLabel(L["RULE_ROLE_LABEL"])
+  roleDropdown:SetList({
+  --[""] = L["NO_ROLE"],--reserved
+    completion = L["ROLE_COMPLETION"],
+    ["auto-count"] = L["ROLE_AUTO_COUNT"],
+    activation = L["ROLE_ACTIVATION"],
+  })
+  roleDropdown:SetValue(existingRule and existingRule.role or "completion")
+  roleDropdown:SetFullWidth(true)
+  editor:AddChild(roleDropdown)
+
   local saveBtn = AceGUI:Create("Button")
   saveBtn:SetText(L["SAVE"])
   saveBtn:SetFullWidth(true)
   saveBtn:SetCallback("OnClick", function()
     local ruleType = typeDropdown:GetValue()
     local id = tonumber(idBox:GetText())
-    local rule = { type = ruleType }
+    local selectedRole = roleDropdown:GetValue() -- Captura el valor del dropdown de rol
+    local rule = {
+      type = ruleType,
+      role = selectedRole -- Asigna el rol a la regla
+    }
 
     if ruleType == "quest" then
       rule.questID = id
@@ -819,6 +881,25 @@ function CounterIt:OpenRuleEditor(task, existingRule, callback)
   end)
   editor:AddChild(saveBtn)
 
+end
+
+--- @param taskID string           -- ID de la tarea
+function CounterIt:ActivateTask(taskID)
+  local charTasks = self.charDb.char.tasks
+  if not charTasks[taskID] then
+    charTasks[taskID] = {
+      taskID = taskID,
+      active = true,
+      completed = false,
+      progressManual = 0,
+      rulesProgress = {},
+    }
+  else
+    charTasks[taskID].active = true
+  end
+  if self.activeMonitorFrame then 
+    self:RenderActiveTasks() 
+  end
 end
 
 -- ui.lua - fin del archivo 

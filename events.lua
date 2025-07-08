@@ -96,16 +96,16 @@ end
 --[[
   https://warcraft.wiki.gg/wiki/UNIT_SPELLCAST_SENT
   Payload
-	event
-		string : UNIT_SPELLCAST_SENT
-	unit
-		string : UnitId - Only fires for "player"
-	target
-		string : UnitId
-	castGUID
-		string : GUID - e.g. for  [Flare] (Spell ID 1543) "Cast-3-3783-1-7-1543-000197DD84"
-	spellID
-		number
+  event
+    string : UNIT_SPELLCAST_SENT
+  unit
+    string : UnitId - Only fires for "player"
+  target
+    string : UnitId
+  castGUID
+    string : GUID - e.g. for  [Flare] (Spell ID 1543) "Cast-3-3783-1-7-1543-000197DD84"
+  spellID
+    number
   ]]--
 --- Handler para el evento UNIT_SPELLCAST_SENT (hechizo enviado).
 ---@param event string
@@ -234,10 +234,10 @@ end
   https://warcraft.wiki.gg/wiki/QUEST_ACCEPTED
   QUEST_ACCEPTED: [questLogIndex,] questId
   Payload
-	questLogIndex
-		number - WoW Icon update.png Classic only. Index of the quest in the quest log. You may pass this to GetQuestLogTitle() for information about the accepted quest.
-	questID
-		number - QuestID of the accepted quest.
+  questLogIndex
+    number - WoW Icon update.png Classic only. Index of the quest in the quest log. You may pass this to GetQuestLogTitle() for information about the accepted quest.
+  questID
+    number - QuestID of the accepted quest.
   ]]--
 --- Handler para el evento QUEST_ACCEPTED.
 ---@param questID number
@@ -254,6 +254,15 @@ end
   ]]--
 --- Handler para el evento BAG_UPDATE_DELAYED. Gestiona triggers de objetos en el inventario.
 function CounterIt:BAG_UPDATE_DELAYED()
+
+    if event == "BAG_UPDATE" then
+        -- Solo procesa si hay ítems para monitorear
+        if next(self.itemsToMonitorForActivation) then
+            self:CheckForActivatedItemRules()
+        end
+    end
+    -- ... otros manejadores de eventos ...
+
   self.processedItemTriggers = self.processedItemTriggers or {}
 
   for itemID, _ in pairs(self.processedItemTriggers) do
@@ -300,8 +309,8 @@ end
   https://warcraft.wiki.gg/wiki/UNIT_INVENTORY_CHANGED
   
   Payload
-	unitTarget
-		string : UnitId
+  unitTarget
+    string : UnitId
   ]]--
 --- Handler para el evento UNIT_INVENTORY_CHANGED.
 ---@param unitTarget string
@@ -543,11 +552,15 @@ function CounterIt:CheckQuestRulesForActiveTasks()
             questCount = questCount + 1
           --rule.progress = rule.count or 1
           --self:EvaluateRule(taskID, task, idx) -- rule
+            self.traceMode = true
             self:UpdateTaskProgress(taskID, task)
+            self.traceMode = false
           end
         end
       end
-    --self:EvaluateTaskCompletion(taskID, task)
+      self.traceMode = (taskID == "desire-to-d-r-i-v-e")
+      self:UpdateTaskProgress(taskID, task)
+      self.traceMode = false
     end
   end
   if questCount > 0 then
@@ -629,6 +642,71 @@ function CounterIt:_GetSpellCastCount(spellID)
   return spellCasts[spellID] or 0
 end
 
+-- En core.lua (o un módulo de lógica relevante)
+function CounterIt:CheckForActivatedItemRules()
+    local activatedAnyTask = false
+
+    -- Itera solo sobre los ítems que nos interesan para la activación
+    for itemID, _ in pairs(self.itemsToMonitorForActivation) do
+        local currentCount = GetItemCount(itemID)
+        local previousCount = self.itemCountsBeforeBagUpdate[itemID] or 0
+
+        -- Si la cantidad actual es mayor que la anterior, el ítem ha sido adquirido (o más cantidad)
+        if currentCount > previousCount then
+            -- El ítem con este itemID acaba de ser adquirido, ahora buscamos tareas
+            -- No importa la cantidad específica adquirida con BAG_UPDATE, solo que cambió.
+            -- Si la regla requiere 'X' cantidad, GetItemCount(itemID) ya lo verifica.
+
+            -- Bucle para las tareas existentes del personaje
+            for taskID, taskData in pairs(self.db.global.tasks) do
+                local charTaskState = self.charDb.char.tasks[taskID]
+
+                -- Solo intentamos activar si la tarea no está ya activa
+                if not taskState or not taskState.active then
+                    for _, rule in ipairs(taskData.rules) do
+                        if rule.type == "item" and rule.role == self.RuleRoles.ACTIVATION and rule.itemID == itemID then
+                            local requiredCount = rule.count or 1
+                            if currentCount >= requiredCount then
+                                -- ¡Regla de activación de ítem cumplida!
+                                self:ActivateTask(taskID)
+                                activatedAnyTask = true
+                                break -- Ya activamos esta tarea, no necesitamos revisar más reglas de esta tarea.
+                            end
+                        end
+                    end
+                end
+            end
+
+            -- Opcional: Bucle para activar plantillas que se añaden como nuevas tareas
+            -- Esto es si quieres que al obtener un ítem, una plantilla se convierta en una nueva tarea activa.
+            -- for templateID, templateData in pairs(self.taskTemplates) do
+            --     for _, rule in ipairs(templateData.rules) do
+            --         if rule.type == "item" and rule.role == self.RuleRoles.ACTIVATION and rule.itemID == itemID then
+            --             local requiredCount = rule.count or 1
+            --             if currentCount >= requiredCount then
+            --                 -- Verificar si ya existe una tarea con este templateID y no está activa
+            --                 local existingTaskID = templateID -- Asumiendo que templateID es también taskID
+            --                 if not self.charDb.char.tasks[existingTaskID] or not self.charDb.char.tasks[existingTaskID].active then
+            --                     self:AddTaskFromTemplate(templateID) -- Necesitarías una función para esto
+            --                     activatedAnyTask = true
+            --                 end
+            --                 break
+            --             end
+            --         end
+            --     end
+            -- end
+        end
+    end
+
+    -- Finalmente, actualiza los conteos guardados para la próxima comparación
+    self:UpdateStoredItemCounts()
+
+    -- Si activamos alguna tarea, podrías querer hacer un refresh de UI general
+    -- if activatedAnyTask then
+    --   self:RenderAllTasks() -- o self:RenderActiveTasks() etc.
+    -- end
+end
+
 -----------------------------------------------------
 -- SLASH COMMANDS DE DEPURACIÓN
 -----------------------------------------------------
@@ -647,7 +725,7 @@ end
 -- COMANDO PARA SIMULAR ACTUALIZAR TAREAS
 -----------------------------------------------------
 SLASH_CITUPDATE1 = "/citupdate"
-SlashCmdList["CITSIMULATE"] = function()
+SlashCmdList["CITUPDATE"] = function()
   CounterIt:UpdateTasks()
   print("SLASH_CITUPDATE1")
 end

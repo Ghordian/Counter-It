@@ -12,6 +12,13 @@ local DB_VERSION = 5 -- desde v0.1.7
 local globalTasks     -- nivel cuenta
 --local charCounters    -- nivel personaje
 
+-- Define tus constantes de roles aquí
+CounterIt.RuleRoles = {
+    COMPLETION = "completion",
+    AUTO_COUNT = "auto-count",
+    ACTIVATION = "activation",
+}
+
 function CounterIt:Debug(...)
   if self:IsDebugMode() then
     print("|cffffcc00[CounterIt DEBUG]|r", ...)
@@ -220,6 +227,13 @@ function CounterIt:OnInitialize()
 
   self:MigrateDatabase() -- v0.1.5
 
+  -- Inicializar la tabla para monitorear los ítems
+  self.itemsToMonitorForActivation = {}
+  self.itemCountsBeforeBagUpdate = {} -- Para guardar el conteo anterior de ítems
+
+  -- Llama a una función para poblar itemsToMonitorForActivation al inicio
+  self:BuildActivationItemMonitorList()
+
   -- Comandos de consola
   self:RegisterChatCommand("counterit", "OpenTaskManager")
   self:RegisterChatCommand("ci", "OpenTaskManager")
@@ -251,6 +265,40 @@ function CounterIt:OnInitialize()
   self:Print(L["LOADED_MSG"])
 end
 
+-- Nueva función para construir la lista de ítems a monitorear
+function CounterIt:BuildActivationItemMonitorList()
+    wipe(self.itemsToMonitorForActivation) -- Limpiar antes de poblar
+
+    -- Recorre todas tus tareas (globales y plantillas si quieres)
+    -- global.tasks es para las tareas que ya tiene el personaje
+    for taskID, taskData in pairs(self.db.global.tasks) do
+        for _, rule in ipairs(taskData.rules) do
+            if rule.type == "item" and rule.role == self.RuleRoles.ACTIVATION and rule.itemID then
+                self.itemsToMonitorForActivation[rule.itemID] = true -- Solo necesitamos saber que existe
+            end
+        end
+    end
+
+    -- Si también quieres que las plantillas se activen automáticamente al obtener un ítem:
+    for templateID, templateData in pairs(self.taskTemplates) do
+         for _, rule in ipairs(templateData.rules) do
+            if rule.type == "item" and rule.role == self.RuleRoles.ACTIVATION and rule.itemID then
+                self.itemsToMonitorForActivation[rule.itemID] = true
+            end
+        end
+    end
+
+    -- Almacenar los conteos actuales de estos ítems para la próxima BAG_UPDATE
+    self:UpdateStoredItemCounts()
+end
+
+-- Función para guardar los conteos actuales de los ítems monitoreados
+function CounterIt:UpdateStoredItemCounts()
+    for itemID, _ in pairs(self.itemsToMonitorForActivation) do
+        self.itemCountsBeforeBagUpdate[itemID] = GetItemCount(itemID)
+    end
+end
+
 function CounterIt:ResetActiveTasks()
   -- Cerrar el panel de seguimiento de tareas activas
   if self.activeMonitorFrame and self.activeMonitorFrame:IsShown() then
@@ -269,7 +317,8 @@ function CounterIt:ResetActiveTasks()
     print("CounterIt: No se pudo acceder a los datos.")
   end
 end
-  
+
+--- @param id string           -- ID de la tarea o template
 function CounterIt:HandleAutoTrigger(id)
   self:Debug('HandleAutoTrigger', id)
   if self:IsTemplate(id) then
