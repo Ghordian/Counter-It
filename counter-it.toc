@@ -5,7 +5,7 @@
 ## Notes-esES: Seguimiento de tareas personalizadas con contadores manuales
 
 ## Author: Ghordjan
-## Version: 0.1.8
+## Version: 0.1.8.1
 
 ## X-WoWI-ID:26938
 ## X-Curse-Project-ID: 1289207
@@ -37,6 +37,7 @@ Libs\AceDBOptions-3.0\AceDBOptions-3.0.xml
 
 locales\enUS.lua
 locales\esES.lua
+locales\ruRU.lua
 
 core.lua
 config.lua

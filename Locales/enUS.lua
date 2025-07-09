@@ -9,7 +9,7 @@ L["TITLE"] = "Counter-It"
 L["TASK_MANAGER_TITLE"] = "Task Manager"
 L["ACTIVE_MONITOR_TITLE"] = "Active Tasks"
 L["ADD_TASK"] = "Add Task"
-L["FROM_TEMPLATE"] = "From Template"
+L["FROM_TEMPLATE"] = "Add From Template"  -- fostot
 L["OPEN_MONITOR"] = "Open Monitor"
 L["EXPORT_IMPORT"] = "Export / Import"
 L["ACTIVATE"] = "Activate"
@@ -28,6 +28,8 @@ L["ID"] = "ID"
 L["MINIMAP_LEFT"] = "Left Click: Open paused tasks manager"
 L["MINIMAP_RIGHT"] = "Right Click: Open active tasks monitor"
 L["LOADED_MSG"] = "Counter-It loaded. Use /counterit to manage tasks or /cit to monitor."
+
+L["MIGRATION_CLEANED_GLOBAL_PROGRESS"] = "Global task progress has been cleared to enable per-character tracking."
 
 -- util
 L["IMPORT_INVALID"] = "Invalid text."
@@ -60,19 +62,25 @@ L["SELECT_ICON"] = "Select Icon"
 L["EDIT_RULE"] = "Edit Rule"
 L["STATUSTEXT_NEW_RULE"] = "Define the rule details"
 
-L["TASK_OBJECTIVE_LABEL"] = "Objective"                   -- enUS
-L["TASK_ICON_LABEL"] = "Icon (optional)"                  -- enUS
-L["RULE_TYPE_LABEL"] = "Rule type"                        -- enUS
-L["RULE_ID_LABEL"] = "ID (optional for manual)"           -- enUS
+L["TASK_OBJECTIVE_LABEL"] = "Objective"
+L["TASK_ICON_LABEL"] = "Icon (optional)"
+L["RULE_TYPE_LABEL"] = "Rule type"
+L["RULE_ID_LABEL"] = "ID (optional for manual)"
 
-L["RULE_MANUAL"] = "Manual counter"                       -- enUS
-L["RULE_QUEST"] = "Complete quest (questID)"              -- enUS
-L["RULE_ITEM"] = "Obtain item (itemID)"                   -- enUS
-L["RULE_SPELL"] = "Cast spell (spellID)"                  -- enUS
-L["RULE_PETCAPTURE"] = "Capture battle pets"              -- enUS
+L["RULE_MANUAL"] = "Manual counter"
+L["RULE_QUEST"] = "Complete quest (questID)"
+L["RULE_ITEM"] = "Obtain item (itemID)"
+L["RULE_SPELL"] = "Cast spell (spellID)"
+L["RULE_PETCAPTURE"] = "Capture battle pets"
 
 L["RULE_SPELL_NOT_FOUND"] = "|cffff0000Spell not found|r"
 L["RULE_SPELLID_NOT_VALID"] = "|cffff0000ID not valid|r"
+
+L["RULE_ROLE_LABEL"] = "Role"
+L["ROLE_COMPLETION"] = "Task Completion"
+L["ROLE_AUTO_COUNT"] = "Auto-Counting"
+L["ROLE_ACTIVATION"] = "Activation"
+L["NO_ROLE"] = "No Role"
 
 L["SCROLLFRAME_DEBUG"] = "scrollFrame = %s"
 
@@ -89,7 +97,7 @@ L["TITLE_SELECT_TEMPLATE"] = "Select Template"
 L["STATUSTEXT_SELECT_TEMPLATE"] = "Choose a template to create a task"
 
 L["side-with-a-cartel"] = "Have chosen which Cartel you will align with for that week"
-L["ship-right"] = "Realizar 10 trabajos."
+L["ship-right"] = "Perform 10 ship jobs"
 L["reclaimed-scrap"] = "Gathered 100 empty Kaja' Cola cans from S.C.R.A.P piles"
 L["side-gig"] = "Have completed a Side Gig. Side Gigs are available in the main Transportation Hub"
 L["war-mode-violence"] = "Defeat five enemy players in War Mode in Undermine"
@@ -108,8 +116,8 @@ L["ENABLE_TRIGGERS"] = "Enable automatic triggers"
 L["ENABLE_TRIGGERS_DESC"] = "Allow Counter-It to activate tasks automatically based on in-game conditions."
 L["ENABLE_TRACKING"] = "Enable task tracking"
 L["ENABLE_TRACKING_DESC"] = "Allow active tasks to be displayed and updated in the tracking panel."
-L["DEBUG_MODE"] = "Depuración (debugMode)"
-L["DEBUG_MODE_DESC"] = "Activa/desactiva el modo depuración para Counter-It."
+L["DEBUG_MODE"] = "Debugging (debugMode)"
+L["DEBUG_MODE_DESC"] = "Toggle debug mode for Counter-It."
 
 -- rules
 L["ManualRulesFixed"] = "Manual rules without 'count' parameter have been fixed."

@@ -9,7 +9,7 @@ L["TITLE"] = "Counter-It"
 L["TASK_MANAGER_TITLE"] = "Gestor de Tareas"
 L["ACTIVE_MONITOR_TITLE"] = "Tareas Activas"
 L["ADD_TASK"] = "Nueva Tarea"
-L["FROM_TEMPLATE"] = "Desde Plantilla"
+L["FROM_TEMPLATE"] = "Nueva Desde Plantilla"
 L["OPEN_MONITOR"] = "Abrir Monitor"
 L["EXPORT_IMPORT"] = "Exportar / Importar"
 L["ACTIVATE"] = "Activar"
@@ -28,6 +28,8 @@ L["ID"] = "ID"
 L["MINIMAP_LEFT"] = "Clic izquierdo: abrir gestor de tareas pausadas"
 L["MINIMAP_RIGHT"] = "Clic derecho: abrir monitor de tareas activas"
 L["LOADED_MSG"] = "Counter-It cargado. Usa /counterit para gestionar tareas o /cit para seguimiento."
+
+L["MIGRATION_CLEANED_GLOBAL_PROGRESS"] = "Se ha eliminado el progreso global de tareas para habilitar la gestión por personaje."
 
 -- util
 L["IMPORT_INVALID"] = "Texto no válido."
@@ -72,7 +74,13 @@ L["RULE_SPELL"] = "Lanzar hechizo (spellID)"
 L["RULE_PETCAPTURE"] = "Capturar mascotas de duelo"
 
 L["RULE_SPELL_NOT_FOUND"] = "|cffff0000Hechizo no encontrado|r"
-L["RULE_SPELLID_NOT_VALID"] = "|cffff0000ID no válido|r"
+L["RULE_SPELLID_NOT_VALID"] = "|cffff0000ID de hechizo no válido|r"
+
+L["RULE_ROLE_LABEL"] = "Role"
+L["ROLE_COMPLETION"] = "Completar tarea"
+L["ROLE_AUTO_COUNT"] = "Conteo automático"
+L["ROLE_ACTIVATION"] = "Activación"
+L["NO_ROLE"] = "Sin role"
 
 L["SCROLLFRAME_DEBUG"] = "scrollFrame = %s"
 

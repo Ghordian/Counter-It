@@ -29,6 +29,8 @@ L["MINIMAP_LEFT"] = "ЛКМ: Открыть менеджер приостано�
 L["MINIMAP_RIGHT"] = "ПКМ: Открыть монитор активных задач"
 L["LOADED_MSG"] = "Счётчик загружен. Используйте /counterit для управления задачами или /cit для мониторинга."
 
+L["MIGRATION_CLEANED_GLOBAL_PROGRESS"] = "Global task progress has been cleared to enable per-character tracking."
+
 -- util
 L["IMPORT_INVALID"] = "Недопустимый текст."
 L["IMPORT_DECOMPRESS_FAIL"] = "Не удалось распаковать текст."
@@ -73,6 +75,12 @@ L["RULE_PETCAPTURE"] = "Поймать боевых питомцев"
 
 L["RULE_SPELL_NOT_FOUND"] = "|cffff0000Заклинание не найдено|r"
 L["RULE_SPELLID_NOT_VALID"] = "|cffff0000ID недействителен|r"
+
+L["RULE_ROLE_LABEL"] = "Роль" --TODO
+L["ROLE_COMPLETION"] = "выполнение задания" --TODO
+L["ROLE_AUTO_COUNT"] = "автоподсчет" --TODO
+L["ROLE_ACTIVATION"] = "активация" --TODO
+L["NO_ROLE"] = "без роли" --TODO
 
 L["SCROLLFRAME_DEBUG"] = "scrollFrame = %s"
 
