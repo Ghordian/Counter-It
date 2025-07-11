@@ -6,7 +6,8 @@ local L = LibStub("AceLocale-3.0"):GetLocale("CounterIt")
 --*-- DB_VERSION = 2 -- desde v0.1.4 (cambia estructura de tasks)
 --*-- DB_VERSION = 3 -- desde v0.1.5 (IDs únicos para tasks)
 --*-- DB_VERSION = 4 -- desde v0.1.6
-local DB_VERSION = 5 -- desde v0.1.7
+--*-- DB_VERSION = 5 -- desde v0.1.7
+local DB_VERSION = 6 -- desde v0.1.9
 
 -- Variables compartidas entre archivos
 local globalTasks     -- nivel cuenta
@@ -162,6 +163,21 @@ function CounterIt:MigrateCharCountersToTaskState()
   charDb.counters = nil
 end
 
+--- Establece el valor por defecto de isFavorite de todas las tareas ya definidas
+function MigrateFavoriteTesk()
+  local tasks = self.db.global.tasks
+  if not tasks then return end
+
+  local anyCleared = false
+  for _, task in pairs(tasks) do
+    if task.isFavorite == nil then 
+      anyCleared = true
+      task.isFavorite = false
+    end
+  end
+  return anyCleared
+end
+
 function CounterIt:MigrateDatabase()
   local db = self.db.global
   if not db.dbVersion then db.dbVersion = 1 end
@@ -188,6 +204,15 @@ function CounterIt:MigrateDatabase()
     end
     self:MigrateCharCountersToTaskState()
     db.dbVersion = 5
+  end
+
+  if db.dbVersion < 6 then
+    local anyCleared = self:CleanupGlobalTaskStates()
+    if anyCleared then
+      self:Print("|cffffcc00[Counter-It]|r ", L["MIGRATION_CLEANED_GLOBAL_PROGRESS"])
+    end
+    self:MigrateFavoriteTesk()
+    db.dbVersion = 6
   end
 
   db.dbVersion = DB_VERSION

@@ -245,6 +245,7 @@ function CounterIt:CreateTaskFromTemplate(name)
     templateID = taskID,
     url = template.url,
     step = template.step,
+    isFavorite = false,
   }
 
   self.globalTasks()[taskID] = newTask -- taskID

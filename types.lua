@@ -1,5 +1,7 @@
 -- types.lua
 
+-- v0.1.9
+
 ---@class TaskData
 ---@field taskID string                 -- Identificar único de la tarea
 ---@field description string            -- Descripción de la tarea
@@ -11,6 +13,7 @@
 ---@field url? string                   -- URL informativa (opcional)
 ---@field notes? string                 -- Notas adicionales (opcional)
 ---@field templateID? string            -- (opcional) ID de plantilla de origen si fue creada desde plantilla
+---@field isFavorite? boolean           -- (opcional) Si la tarea está marcada como favorita
 
 ---@class RuleData
 ---@field type string                  -- Tipo de regla: "manual", "quest", "spell", etc.

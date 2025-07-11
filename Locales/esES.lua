@@ -45,6 +45,9 @@ L["IMPORT"] = "Importar"
 -- ui
 L["TITLE_TASK_MANAGER"] = "Counter-It: Gestor de Tareas"
 L["STATUSTEXT_TASK_MANAGER"] = "Gestiona tus tareas personalizadas"
+
+L["TASKS_DEFINED"] = "Tareas DEFINIDAS"
+
 L["EDIT_TASK"] = "Editar tarea"
 L["NEW_TASK"] = "Nueva tarea"
 L["DEFINE_TASK_DETAILS"] = "Define los detalles de la tarea"
@@ -52,6 +55,10 @@ L["DEFINE_TASK_DETAILS"] = "Define los detalles de la tarea"
 L["CONFIRM_DELETE_TASK"] = "¿Eliminar la tarea '%s' permanentemente?"
 L["YES"] = "Sí"
 L["CANCEL"] = "Cancelar"
+
+L["ADD_TO_FAVORITES"] = "Añadir a Favoritos"
+L["REMOVE_FROM_FAVORITES"] = "Quitar de Favoritos"
+L["SHOW_ONLY_FAVORITES"] = "Mostrar solo Favoritas"
 
 L["TASK_SAVE_MISSING"] = "Faltan campos obligatorios."
 L["TASK_SAVED"] = "Tarea guardada: %s"

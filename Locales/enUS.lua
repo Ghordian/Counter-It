@@ -45,6 +45,9 @@ L["IMPORT"] = "Import"
 -- ui
 L["TITLE_TASK_MANAGER"] = "Counter-It: Task Manager"
 L["STATUSTEXT_TASK_MANAGER"] = "Manage your custom tasks"
+
+L["TASKS_DEFINED"] = "DEFINED TASKS"
+
 L["EDIT_TASK"] = "Edit Task"
 L["NEW_TASK"] = "New Task"
 L["DEFINE_TASK_DETAILS"] = "Define the task details"
@@ -52,6 +55,10 @@ L["DEFINE_TASK_DETAILS"] = "Define the task details"
 L["CONFIRM_DELETE_TASK"] = "Permanently delete the task '%s'?"
 L["YES"] = "Yes"
 L["CANCEL"] = "Cancel"
+
+L["ADD_TO_FAVORITES"] = "Add to Favorites"
+L["REMOVE_FROM_FAVORITES"] = "Remove from Favorites"
+L["SHOW_ONLY_FAVORITES"] = "Show Only Favorites"
 
 L["TASK_SAVE_MISSING"] = "Missing required fields."
 L["TASK_SAVED"] = "Task saved: %s"

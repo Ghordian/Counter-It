@@ -6,6 +6,10 @@ local AceGUI = LibStub("AceGUI-3.0")
 
 local L = LibStub("AceLocale-3.0"):GetLocale("CounterIt") 
 
+-- Constantes para las texturas de la estrella de favorito
+local TEXTURE_STAR_FAVORITE = "Interface\\Common\\FavoritesIcon"
+local TEXTURE_STAR_UNFAVORITE = "Interface\\Common\\FavoritesIcon"
+
 --- Guarda el estado (posición y tamaño) del panel de gestión de tareas.
 function CounterIt:SaveTaskManagerFrameState()
   if not self.taskManagerFrame or not self.taskManagerFrame.frame then return end
@@ -99,8 +103,26 @@ function CounterIt:OpenTaskManager()
 
   self:AddTopButtons(topGroup)
 
+    -- NUEVO: Checkbox para filtrar favoritas
+  local filterGroup = AceGUI:Create("SimpleGroup")
+  filterGroup:SetLayout("Flow")
+  filterGroup:SetFullWidth(true)
+  filterGroup:SetHeight(24) -- Altura fija para el control
+
+  local filterFavoritesCheckBox = AceGUI:Create("CheckBox")
+  filterFavoritesCheckBox:SetLabel(L["SHOW_ONLY_FAVORITES"])
+  filterFavoritesCheckBox:SetWidth(200) -- Ajusta el ancho para el texto
+  -- Recuperar el estado del filtro desde la base de datos (se guardará en charDb)
+  filterFavoritesCheckBox:SetValue(self.db.char.showOnlyFavorites or false)
+  filterFavoritesCheckBox:SetCallback("OnValueChanged", function(widget, event, value)
+    self.db.char.showOnlyFavorites = value -- Guardar el estado
+    self:RenderAllTasks() -- Re-renderizar la lista para aplicar el filtro
+  end)
+  filterGroup:AddChild(filterFavoritesCheckBox)
+  topGroup:AddChild(filterGroup) -- Añadir este grupo al topGroup
+
   local pausedLabel = AceGUI:Create("Label")
-  pausedLabel:SetText(L["TASK_PAUSED"])
+  pausedLabel:SetText(L["TASKS_DEFINED"])
   pausedLabel:SetFullWidth(true)
   topGroup:AddChild(pausedLabel)
 
@@ -146,8 +168,6 @@ function CounterIt:OpenTaskManager()
         charTasks[self.selectedTaskID].active = true
       end
 
-    --self.selectedTaskID = nil -- rejected
-    --self:RenderAllTasks()     -- rejected
       self:UpdateTaskManagerSelectionDisplay()
       if self.activeMonitorFrame then 
         self:RenderActiveTasks() 
@@ -213,6 +233,8 @@ function CounterIt:RenderAllTasks()
 
   local tasks = self.globalTasks()
   local charTasks = self.charDb.char.tasks or {}
+  local showOnlyFavorites = self.db.char.showOnlyFavorites or false -- Obtener el estado del filtro
+
 
   -- Almacena una referencia al widget de cada tarea para poder manipularlo más tarde
   -- Esto es crucial para la actualización de selección sin recargar toda la lista
@@ -220,81 +242,158 @@ function CounterIt:RenderAllTasks()
   wipe(self.taskWidgets) -- Limpiar referencias antiguas antes de recrear
 
   for taskID, task in pairs(tasks) do
-    local row = AceGUI:Create("SimpleGroup")
-    row:SetLayout("Flow")
-    row:SetFullWidth(true)
-    row:SetHeight(30)
 
-    local st = charTasks[taskID]
-
-    -- Check de activación
-    local check = AceGUI:Create("CheckBox")
-    check:SetValue(st and st.active or false) -- task.active
-    check:SetWidth(24)
-    check:SetCallback("OnValueChanged", function(widget, event, value)
-    --task.active = value
-      if not charTasks[taskID] then
-        charTasks[taskID] = {
-          taskID = taskID,
-          active = value,
-          completed = false,
-          progressManual = 0,
-          rulesProgress = {},
-        }
-      else
-        charTasks[taskID].active = value
-      end
-      self:UpdateTaskProgress(taskID, task) -- name
-      if self.activeMonitorFrame then
-        self:RenderActiveTasks()
-      end
-      -- Después de cambiar el estado de activa/pausada, la lista puede cambiar, así que:
-      -- TBD - self:RenderAllTasks() -- Llama a RenderAllTasks para una reconstrucción completa si la visibilidad cambia
-    end)
-    row:AddChild(check)
-
-    -- Icono
-    if task.icon then
-      local icon = AceGUI:Create("Label")
-      icon:SetImage(task.icon, 24, 24)
-      icon:SetWidth(30)
-      row:AddChild(icon)
+    if task.isFavorite == nil then
+        task.isFavorite = false -- Inicializa a false si no está definido
     end
 
-    -- Texto de la tarea
-    local label = AceGUI:Create("InteractiveLabel")
-    label:SetText(format(L["TASK_OBJECTIVE"], tostring(task.description), tonumber(task.goal)))
-    label:SetFontObject(GameFontNormal)
-    label:SetWidth(260)
-    label:SetHeight(30)
-    -- El color inicial se establece aquí, la función de actualización de selección lo cambiará
-    label:SetColor(1, 1, 1) -- Color blanco por defecto
-    label.originalColor = {1, 1, 1} -- Guardar el color original para restaurar
---  label:SetColor(self.selectedTaskID == taskID and 1 or 1, self.selectedTaskID == taskID and 1 or 1, self.selectedTaskID == taskID and 0 or 1)
+ -- NUEVO: Aplicar el filtro de favoritas
+    if showOnlyFavorites and not task.isFavorite then
+      -- Si el filtro está activo y la tarea NO es favorita, la saltamos
+      -- simplemente saltamos el resto de la iteración actual
+      -- (es decir, no hacemos nada y el bucle pasa a la siguiente tarea).
+    else
+       -- SI LA TAREA PASA EL FILTRO (o el filtro no está activo),
 
-    -- Asigna una referencia al label dentro de la fila, para poder acceder a él desde fuera
-    row.labelWidget = label
+      local row = AceGUI:Create("SimpleGroup")
+      row:SetLayout("Flow")
+      row:SetFullWidth(true)
+      row:SetHeight(30)
 
-    label:SetCallback("OnEnter", function(widget)
-      GameTooltip:SetOwner(widget.frame, "ANCHOR_RIGHT")
-      GameTooltip:SetText(format(L["TASK_TOOLTIP_OBJECTIVE"], task.description, task.goal))
-      if task.hint then
-        GameTooltip:AddLine(task.hint, 1, 0.9, 0)
+      local st = charTasks[taskID]
+
+      -- Check de activación
+      local check = AceGUI:Create("CheckBox")
+      check:SetValue(st and st.active or false) -- task.active
+      check:SetWidth(24)
+      check:SetCallback("OnValueChanged", function(widget, event, value)
+      --task.active = value
+        if not charTasks[taskID] then
+          charTasks[taskID] = {
+            taskID = taskID,
+            active = value,
+            completed = false,
+            progressManual = 0,
+            rulesProgress = {},
+          }
+        else
+          charTasks[taskID].active = value
+        end
+        self:UpdateTaskProgress(taskID, task) -- name
+        if self.activeMonitorFrame then
+          self:RenderActiveTasks()
+        end
+        -- Después de cambiar el estado de activa/pausada, la lista puede cambiar, así que:
+        -- TBD - self:RenderAllTasks() -- Llama a RenderAllTasks para una reconstrucción completa si la visibilidad cambia
+      end)
+      row:AddChild(check)
+
+      -- FAVORITEICON - BEGIN
+      local favoriteIcon = AceGUI:Create("Icon") -- ¡Aquí está el cambio clave!
+      favoriteIcon:SetWidth(32) -- Tamaño del widget de icono
+      favoriteIcon:SetHeight(32)
+      favoriteIcon:SetImageSize(28, 28) -- Tamaño de la imagen dentro del widget
+
+      favoriteIcon.taskData = task;
+
+      -- Función auxiliar para actualizar la imagen y color del icono de estrella
+      local function UpdateFavoriteStarVisual(iconWidget, isFavoriteState)
+        if isFavoriteState then
+          iconWidget:SetImage(TEXTURE_STAR_FAVORITE)
+        --iconWidget.image:SetVertexColor(1, 0.8, 0, 1) -- Dorado para favorito
+          iconWidget.image:SetVertexColor(1, 1, 1, 1)
+        else
+          iconWidget:SetImage(TEXTURE_STAR_UNFAVORITE)
+          iconWidget.image:SetVertexColor(0.5, 0.5, 0.5, 1) -- Gris para no favorito
+        end
       end
-      GameTooltip:Show()
-    end)
-    label:SetCallback("OnLeave", GameTooltip_Hide)
-    label:SetCallback("OnClick", function()
-      self.selectedTaskID = taskID -- name
-    --self:RenderAllTasks()--REJECTED
-      self:UpdateTaskManagerSelectionDisplay() -- ¡Nueva llamada!
-    end)
 
-    row:AddChild(label)
-    group:AddChild(row)
+      -- Establecer la visual inicial de la estrella
+      UpdateFavoriteStarVisual(favoriteIcon, task.isFavorite)
 
-    -- Guarda la referencia a la fila para poder acceder a ella por taskID
-    self.taskWidgets[taskID] = row
+      favoriteIcon:SetCallback("OnClick", function(widget) -- 'widget' aquí es el 'favoriteIcon' mismo
+        local currentTaskData = widget.taskData
+
+        if currentTaskData.isFavorite == nil then
+          currentTaskData.isFavorite = false -- Inicializar si no existe (importante para tareas antiguas)
+        end
+        currentTaskData.isFavorite = not currentTaskData.isFavorite -- Alternar el estado directamente en la DB
+
+        -- Actualizar la visual del icono inmediatamente
+        UpdateFavoriteStarVisual(widget, currentTaskData.isFavorite)
+
+        local showOnlyFavorites = CounterIt.db.char.showOnlyFavorites or false -- Obtener el estado del filtro
+        if showOnlyFavorites then
+          CounterIt:RenderAllTasks() -- Re-renderizar la lista para aplicar el filtro (si es necesario)
+        end
+
+      end)
+      -- Añadir un tooltip para el icono de favorito
+      if true then
+        favoriteIcon.frame:SetScript("OnEnter", function(selfFrame) -- selfFrame aquí es el Frame de WoW del widget
+          local widget = selfFrame.obj -- AceGUI adjunta el widget AceGUI al frame de WoW en .obj
+          local tooltipTaskData = widget.taskData -- 
+
+          if tooltipTaskData then
+            GameTooltip:SetOwner(selfFrame, "ANCHOR_RIGHT")
+            if tooltipTaskData.isFavorite then
+              GameTooltip:SetText(L["REMOVE_FROM_FAVORITES"])
+            else
+              GameTooltip:SetText(L["ADD_TO_FAVORITES"])
+            end
+            GameTooltip:Show()
+          end
+        end)
+        favoriteIcon.frame:SetScript("OnLeave", GameTooltip_Hide)
+      end
+
+      row:AddChild(favoriteIcon) -- Añadir el icono de estrella a la fila
+      -- FAVORITEICON - END
+
+      -- Icono
+      if task.icon then
+        local icon = AceGUI:Create("Label")
+        icon:SetImage(task.icon, 24, 24)
+        icon:SetWidth(30)
+        row:AddChild(icon)
+      end
+
+      -- Texto de la tarea
+      local label = AceGUI:Create("InteractiveLabel")
+      label:SetText(format(L["TASK_OBJECTIVE"], tostring(task.description), tonumber(task.goal)))
+      label:SetFontObject(GameFontNormal)
+      label:SetWidth(260)
+      label:SetHeight(30)
+      -- El color inicial se establece aquí, la función de actualización de selección lo cambiará
+      label:SetColor(1, 1, 1) -- Color blanco por defecto
+      label.originalColor = {1, 1, 1} -- Guardar el color original para restaurar
+  --  label:SetColor(self.selectedTaskID == taskID and 1 or 1, self.selectedTaskID == taskID and 1 or 1, self.selectedTaskID == taskID and 0 or 1)
+
+      -- Asigna una referencia al label dentro de la fila, para poder acceder a él desde fuera
+      row.labelWidget = label
+
+      label:SetCallback("OnEnter", function(widget)
+        GameTooltip:SetOwner(widget.frame, "ANCHOR_RIGHT")
+        GameTooltip:SetText(format(L["TASK_TOOLTIP_OBJECTIVE"], task.description, task.goal))
+        if task.hint then
+          GameTooltip:AddLine(task.hint, 1, 0.9, 0)
+        end
+        GameTooltip:Show()
+      end)
+      label:SetCallback("OnLeave", GameTooltip_Hide)
+      label:SetCallback("OnClick", function()
+        self.selectedTaskID = taskID -- name
+      --self:RenderAllTasks()--REJECTED
+        self:UpdateTaskManagerSelectionDisplay() -- ¡Nueva llamada!
+      end)
+
+      row:AddChild(label)
+      group:AddChild(row)
+
+      -- Guarda la referencia a la fila para poder acceder a ella por taskID
+      self.taskWidgets[taskID] = row
+    end
+
   end
 
   -- Después de que todas las filas han sido creadas (o recreadas)
@@ -335,13 +434,13 @@ function CounterIt:AddTopButtons(parentFrame)
 
   local addButton = AceGUI:Create("Button")
   addButton:SetText(L["ADD_TASK"])
-  addButton:SetWidth(130)
+  addButton:SetWidth(120)
   addButton:SetCallback("OnClick", function() self:OpenTaskEditor(nil) end)
   row:AddChild(addButton)
 
   local templateButton = AceGUI:Create("Button")
   templateButton:SetText(L["FROM_TEMPLATE"])
-  templateButton:SetWidth(130)
+  templateButton:SetWidth(160)
   templateButton:SetCallback("OnClick", function() self:OpenTemplateSelector() end)
   row:AddChild(templateButton)
 
@@ -749,6 +848,7 @@ function CounterIt:OpenTaskEditor(taskID)
       templateID = task.templateID,
       url = task.url,
       step = task.step,
+      isFavorite = false,
     }
 
     self:Print(format(L["TASK_SAVED"], desc))

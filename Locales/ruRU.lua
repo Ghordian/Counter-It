@@ -45,6 +45,9 @@ L["IMPORT"] = "Импорт"
 -- ui
 L["TITLE_TASK_MANAGER"] = "Счётчик: Менеджер задач"
 L["STATUSTEXT_TASK_MANAGER"] = "Управляйте своими задачами"
+
+L["TASKS_DEFINED"] = "TASKS DEFINED" -- TODO
+
 L["EDIT_TASK"] = "Редактировать задачу"
 L["NEW_TASK"] = "Новая задача"
 L["DEFINE_TASK_DETAILS"] = "Определите детали задачи"
@@ -52,6 +55,10 @@ L["DEFINE_TASK_DETAILS"] = "Определите детали задачи"
 L["CONFIRM_DELETE_TASK"] = "Удалить задачу '%s' навсегда?"
 L["YES"] = "Да"
 L["CANCEL"] = "Отмена"
+
+L["ADD_TO_FAVORITES"] = "Add to Favorites" -- TODO
+L["REMOVE_FROM_FAVORITES"] = "Remove from Favorites" -- TODO
+L["SHOW_ONLY_FAVORITES"] = "Show Only Favorites" -- TODO
 
 L["TASK_SAVE_MISSING"] = "Отсутствуют обязательные поля."
 L["TASK_SAVED"] = "Задача сохранена: %s"

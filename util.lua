@@ -71,7 +71,7 @@ function CounterIt:OpenExportImportWindow()
   frame:SetStatusText(L["COPY_PASTE_TASKS_DATA"])
   frame:SetLayout("Flow")
   frame:SetWidth(400)
-  frame:SetHeight(300)
+  frame:SetHeight(350)
 
   local editbox = AceGUI:Create("MultiLineEditBox")
   editbox:SetLabel(L["TASKS_TEXT"])
