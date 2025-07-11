@@ -29,7 +29,7 @@ L["MINIMAP_LEFT"] = "ЛКМ: Открыть менеджер приостано�
 L["MINIMAP_RIGHT"] = "ПКМ: Открыть монитор активных задач"
 L["LOADED_MSG"] = "Счётчик загружен. Используйте /counterit для управления задачами или /cit для мониторинга."
 
-L["MIGRATION_CLEANED_GLOBAL_PROGRESS"] = "Global task progress has been cleared to enable per-character tracking."
+L["MIGRATION_CLEANED_GLOBAL_PROGRESS"] = "Глобальный прогресс выполнения задачи был очищен, чтобы обеспечить отслеживание по персонажам."
 
 -- util
 L["IMPORT_INVALID"] = "Недопустимый текст."
@@ -46,7 +46,7 @@ L["IMPORT"] = "Импорт"
 L["TITLE_TASK_MANAGER"] = "Счётчик: Менеджер задач"
 L["STATUSTEXT_TASK_MANAGER"] = "Управляйте своими задачами"
 
-L["TASKS_DEFINED"] = "TASKS DEFINED" -- TODO
+L["TASKS_DEFINED"] = "ОПРЕДЕЛЕННЫЕ ЗАДАЧИ"
 
 L["EDIT_TASK"] = "Редактировать задачу"
 L["NEW_TASK"] = "Новая задача"
@@ -56,9 +56,9 @@ L["CONFIRM_DELETE_TASK"] = "Удалить задачу '%s' навсегда?"
 L["YES"] = "Да"
 L["CANCEL"] = "Отмена"
 
-L["ADD_TO_FAVORITES"] = "Add to Favorites" -- TODO
-L["REMOVE_FROM_FAVORITES"] = "Remove from Favorites" -- TODO
-L["SHOW_ONLY_FAVORITES"] = "Show Only Favorites" -- TODO
+L["ADD_TO_FAVORITES"] = "Добавить в избранное"
+L["REMOVE_FROM_FAVORITES"] = "Удалить из избранного"
+L["SHOW_ONLY_FAVORITES"] = "Показывать только избранные"
 
 L["TASK_SAVE_MISSING"] = "Отсутствуют обязательные поля."
 L["TASK_SAVED"] = "Задача сохранена: %s"
@@ -83,11 +83,11 @@ L["RULE_PETCAPTURE"] = "Поймать боевых питомцев"
 L["RULE_SPELL_NOT_FOUND"] = "|cffff0000Заклинание не найдено|r"
 L["RULE_SPELLID_NOT_VALID"] = "|cffff0000ID недействителен|r"
 
-L["RULE_ROLE_LABEL"] = "Роль" --TODO
-L["ROLE_COMPLETION"] = "выполнение задания" --TODO
-L["ROLE_AUTO_COUNT"] = "автоподсчет" --TODO
-L["ROLE_ACTIVATION"] = "активация" --TODO
-L["NO_ROLE"] = "без роли" --TODO
+L["RULE_ROLE_LABEL"] = "Роль"
+L["ROLE_COMPLETION"] = "Выполнение задания"
+L["ROLE_AUTO_COUNT"] = "Автоматический подсчёт"
+L["ROLE_ACTIVATION"] = "Активация"
+L["NO_ROLE"] = "нет роли"
 
 L["SCROLLFRAME_DEBUG"] = "scrollFrame = %s"
 
