@@ -89,6 +89,31 @@ L["ROLE_AUTO_COUNT"] = "Conteo automático"
 L["ROLE_ACTIVATION"] = "Activación"
 L["NO_ROLE"] = "Sin role"
 
+-- ui - rule zone type
+L["RULE_ZONE"] = "Zona/Mapa"
+L["RULE_ZONE_IDS_LABEL"] = "IDs de Zona/Mapa (separados por comas)"
+L["RULE_ZONE_NAME_LABEL"] = "Nombre de Zona (opcional)"
+L["RULE_ZONE_SEARCH_LABEL"] = "Buscar Zona"
+L["LOOKUP_ZONE"] = "Localizar Zona"
+L["SELECT_ZONE"] = "Seleccionar Zona"
+L["SEARCH_ZONE_HINT"] = "Buscar zonas por su nombre"
+L["FILTER_RESULTS"] = "Filtrar resultados"
+L["ADD"] = "AÑadir"
+L["ADDED"] = "Añadido"
+L["CONFIRM_SELECTION"] = "Confirma Selección"
+L["ENTER_ZONE_SEARCH_TERM"] = "Introduzca una zona para buscarla."
+
+L["TASK_ACTIVATED_ZONE"] = "Tarea '%s' activada al entrar en la zona %s."
+L["TASK_DEACTIVATED_ZONE"] = "Tarea '%s' desactivada al salir de la zona %s."
+
+-- ui - pause tracking
+L["PAUSE_TRACKING"] = "Pausar Seguimiento"
+L["RESUME_TRACKING"] = "Retomar Seguimiento"
+L["TOOLTIP_PAUSE_TRACKING"] = "Haz clic para pausar el seguimiento automático."
+L["TOOLTIP_RESUME_TRACKING"] = "Haz clic pare restaurar el seguimiento automático."
+L["TRACKING_RESUMED"] = "Seguimiento automático restaurado."
+L["TRACKING_PAUSED"] = "Seguimiento automático en pausa."
+
 L["SCROLLFRAME_DEBUG"] = "scrollFrame = %s"
 
 -- events
@@ -96,6 +121,8 @@ L["SIMULATE_PET"] = "Simulación de captura de mascota ejecutada."
 L["SPELLCAST_ID"] = "CheckSpellCast; %s"
 L["SPELLCAST_NAME"] = "CheckSpellCast; %s"
 L["SPELLCAST_MATCH"] = "CheckSpellCast; match; %s"
+
+L["TASK_ACTIVATED_BY_INVENTORY"] = "Tarea '%s' activada por item en el inventario."
 
 -- template
 L["TASK_TEMPLATE_CREATED"] = "Tarea creada desde plantilla: %s"
@@ -144,3 +171,9 @@ L["DEBUG_MODE_DESC"] = "Activa/desactiva el modo depuración para Counter-It."
 L["ManualRulesFixed"] = "Se han corregido reglas 'manual' sin parámetro 'count'."
 L["TemplatesReapplied"] = "Plantillas reaplicadas a %d tareas existentes."
 L["ManualRuleFixedDebug"] = "Tarea '%s': regla manual %d no tenía 'count' válido, se ha puesto a %d (goal=%s)"
+
+--templates
+L["BOSS_KILL_TASK_DESC"] = "Derrotar a %s"
+L["BOSS_KILL_TASK_HINT"] = "Esta tarea se completa al derrotar a %s %d veces."
+L["BOSS_KILL_TASK_HINT_INSTANCE"] = "Esta tarea se completa al derrotar a %s %d veces en %s."
+

@@ -1,6 +1,7 @@
 -- types.lua
 
--- v0.1.9
+-- v0.1.09; isFAvorite
+-- v0.1.10; new rule "zone" for auto-activation/deactivation; show/hide in ActiveTaskMonitor
 
 ---@class TaskData
 ---@field taskID string                 -- Identificar único de la tarea
@@ -25,6 +26,8 @@
 ---@field itemID? number               -- Para tipo item
 ---@field currencyID? number           -- Para tipo currency (currency=2815/cristales-de-resonancia)
 ---@field event? string                -- Para tipo event
+---@field zoneIDs? table<number>       -- NUEVO: Para tipo zone (Tabla de IDs de zona/mapa)
+---@field zoneName? string             -- NUEVO: Para tipo zone (Nombre de la zona/mapa, para mostrar)
 
 ---@alias TasksList table<string, TaskData>  -- Diccionario: clave = taskID, valor = TaskData
 

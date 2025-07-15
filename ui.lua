@@ -116,7 +116,8 @@ function CounterIt:OpenTaskManager()
   filterFavoritesCheckBox:SetValue(self.db.char.showOnlyFavorites or false)
   filterFavoritesCheckBox:SetCallback("OnValueChanged", function(widget, event, value)
     self.db.char.showOnlyFavorites = value -- Guardar el estado
-    self:RenderAllTasks() -- Re-renderizar la lista para aplicar el filtro
+  --self:RenderAllTasks() -- Re-renderizar la lista para aplicar el filtro
+    self:SendMessage("CounterIt_UpdateAllTasks")
   end)
   filterGroup:AddChild(filterFavoritesCheckBox)
   topGroup:AddChild(filterGroup) -- Añadir este grupo al topGroup
@@ -169,9 +170,10 @@ function CounterIt:OpenTaskManager()
       end
 
       self:UpdateTaskManagerSelectionDisplay()
-      if self.activeMonitorFrame then 
-        self:RenderActiveTasks() 
-      end
+    --if self.activeMonitorFrame then 
+    --  self:RenderActiveTasks()
+    --end
+      self:SendMessage("CounterIt_UpdateTasksMonitor")
     end
   end)
   bottomGroup:AddChild(activateButton)
@@ -206,7 +208,8 @@ function CounterIt:OpenTaskManager()
         --counters[taskID] = nil -- taskID
           charTasks[taskID] = nil
           self.selectedTaskID = nil
-          self:RenderAllTasks()
+        --self:RenderAllTasks()
+          self:SendMessage("CounterIt_UpdateAllTasks")
         end,
         timeout = 0,
         whileDead = true,
@@ -223,6 +226,13 @@ function CounterIt:OpenTaskManager()
   -- Botón de exportar/importar
   self:AddExportImportButton(bottomGroup)
 end
+
+-- Constantes para el monitor de tareas
+local BUTTON_SIZE = 24
+local ROW_HORZ_GAP = 8
+
+local ICON_WIDGET_SIZE = 32 -- Tamaño total del área del botón/widget del icono
+local ICON_IMAGE_SIZE = 28  -- Tamaño de la textura de la estrella dentro del widget
 
 --- Renderiza la lista completa de tareas en el panel de gestión de tareas.
 function CounterIt:RenderAllTasks()
@@ -280,9 +290,10 @@ function CounterIt:RenderAllTasks()
           charTasks[taskID].active = value
         end
         self:UpdateTaskProgress(taskID, task) -- name
-        if self.activeMonitorFrame then
-          self:RenderActiveTasks()
-        end
+      --if self.activeMonitorFrame then
+      --  self:RenderActiveTasks()
+      --end
+        self:SendMessage("CounterIt_UpdateTasksMonitor")
         -- Después de cambiar el estado de activa/pausada, la lista puede cambiar, así que:
         -- TBD - self:RenderAllTasks() -- Llama a RenderAllTasks para una reconstrucción completa si la visibilidad cambia
       end)
@@ -290,11 +301,12 @@ function CounterIt:RenderAllTasks()
 
       -- FAVORITEICON - BEGIN
       local favoriteIcon = AceGUI:Create("Icon") -- ¡Aquí está el cambio clave!
-      favoriteIcon:SetWidth(32) -- Tamaño del widget de icono
-      favoriteIcon:SetHeight(32)
-      favoriteIcon:SetImageSize(28, 28) -- Tamaño de la imagen dentro del widget
+      favoriteIcon:SetWidth(ICON_WIDGET_SIZE)
+      favoriteIcon:SetHeight(ICON_WIDGET_SIZE)
+      favoriteIcon:SetImageSize(ICON_IMAGE_SIZE, ICON_IMAGE_SIZE)
 
-      favoriteIcon.taskData = task;
+      -- Adjuntar la 'taskData' al widget para usar en los callbacks
+      favoriteIcon.taskData = task 
 
       -- Función auxiliar para actualizar la imagen y color del icono de estrella
       local function UpdateFavoriteStarVisual(iconWidget, isFavoriteState)
@@ -324,28 +336,27 @@ function CounterIt:RenderAllTasks()
 
         local showOnlyFavorites = CounterIt.db.char.showOnlyFavorites or false -- Obtener el estado del filtro
         if showOnlyFavorites then
-          CounterIt:RenderAllTasks() -- Re-renderizar la lista para aplicar el filtro (si es necesario)
+        --CounterIt:RenderAllTasks() -- Re-renderizar la lista para aplicar el filtro (si es necesario)
+          CounterIt:SendMessage("CounterIt_UpdateAllTasks")
         end
-
       end)
-      -- Añadir un tooltip para el icono de favorito
-      if true then
-        favoriteIcon.frame:SetScript("OnEnter", function(selfFrame) -- selfFrame aquí es el Frame de WoW del widget
-          local widget = selfFrame.obj -- AceGUI adjunta el widget AceGUI al frame de WoW en .obj
-          local tooltipTaskData = widget.taskData -- 
 
-          if tooltipTaskData then
-            GameTooltip:SetOwner(selfFrame, "ANCHOR_RIGHT")
-            if tooltipTaskData.isFavorite then
-              GameTooltip:SetText(L["REMOVE_FROM_FAVORITES"])
-            else
-              GameTooltip:SetText(L["ADD_TO_FAVORITES"])
-            end
-            GameTooltip:Show()
+      -- Añadir un tooltip para el icono de favorito
+      favoriteIcon.frame:SetScript("OnEnter", function(selfFrame) -- selfFrame aquí es el Frame de WoW del widget
+        local widget = selfFrame.obj -- AceGUI adjunta el widget AceGUI al frame de WoW en .obj
+        local tooltipTaskData = widget.taskData -- 
+
+        if tooltipTaskData then
+          GameTooltip:SetOwner(selfFrame, "ANCHOR_RIGHT")
+          if tooltipTaskData.isFavorite then
+            GameTooltip:SetText(L["REMOVE_FROM_FAVORITES"])
+          else
+            GameTooltip:SetText(L["ADD_TO_FAVORITES"])
           end
-        end)
-        favoriteIcon.frame:SetScript("OnLeave", GameTooltip_Hide)
-      end
+          GameTooltip:Show()
+        end
+      end)
+      favoriteIcon.frame:SetScript("OnLeave", GameTooltip_Hide)
 
       row:AddChild(favoriteIcon) -- Añadir el icono de estrella a la fila
       -- FAVORITEICON - END
@@ -367,7 +378,6 @@ function CounterIt:RenderAllTasks()
       -- El color inicial se establece aquí, la función de actualización de selección lo cambiará
       label:SetColor(1, 1, 1) -- Color blanco por defecto
       label.originalColor = {1, 1, 1} -- Guardar el color original para restaurar
-  --  label:SetColor(self.selectedTaskID == taskID and 1 or 1, self.selectedTaskID == taskID and 1 or 1, self.selectedTaskID == taskID and 0 or 1)
 
       -- Asigna una referencia al label dentro de la fila, para poder acceder a él desde fuera
       row.labelWidget = label
@@ -472,9 +482,8 @@ function CounterIt:OpenActiveTasksMonitor()
     return
   end
 
-  -- update
-
   local pos = self.db.global.activeMonitorFrame or {}
+  -- Frame principal del monitor
   local frame = CreateFrame("Frame", "CounterItMonitorFrame", UIParent, "BackdropTemplate")
   frame:SetSize(pos.width or 400, pos.height or 400)
   if pos.point and pos.x and pos.y then
@@ -515,29 +524,29 @@ function CounterIt:OpenActiveTasksMonitor()
   frame:SetBackdropColor(0, 0, 0, 0.7)
 
   -- Título
-  local title = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+  local title = frame:CreateFontString("CounterItMonitorTitle", "OVERLAY", "GameFontHighlight")
   title:SetText(L["ACTIVE_MONITOR_TITLE"])
   title:SetPoint("TOP", 0, -10)
 
-  -- Botones
-  local closeBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+  -- Botones de control de la ventana
+  local closeBtn = CreateFrame("Button", "CounterItMonitorCloseBtn", frame, "UIPanelButtonTemplate")
   closeBtn:SetText(L["CLOSE"])
   closeBtn:SetSize(80, 22)
   closeBtn:SetPoint("BOTTOMRIGHT", -10, 10)
   closeBtn:SetScript("OnClick", function() frame:Hide() end)
 
-  local pausedBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+  local pausedBtn = CreateFrame("Button", "CounterItMonitorManagerBtn", frame, "UIPanelButtonTemplate")
   pausedBtn:SetText(L["TASK_MANAGER_TITLE"])
   pausedBtn:SetSize(120, 22)
   pausedBtn:SetPoint("BOTTOMLEFT", 10, 10)
   pausedBtn:SetScript("OnClick", function() self:OpenTaskManager() end)
 
   -- Scroll
-  local scrollFrame = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
+  local scrollFrame = CreateFrame("ScrollFrame", "CounterItMonitorScrollFrame", frame, "UIPanelScrollFrameTemplate")
   scrollFrame:SetPoint("TOPLEFT", 10, -30)
   scrollFrame:SetPoint("BOTTOMRIGHT", -30, 40)
 
-  local content = CreateFrame("Frame", nil, scrollFrame)
+  local content = CreateFrame("Frame", "CounterItMonitorScrollcontent", scrollFrame)
   content:SetSize(1, 1)
   scrollFrame:SetScrollChild(content)
 
@@ -546,9 +555,9 @@ function CounterIt:OpenActiveTasksMonitor()
   self.activeMonitorFrame = frame
 
   -- Añadir grip para redimensionar
-  local resize = CreateFrame("Frame", nil, frame)
+  local resize = CreateFrame("Frame", "CounterItMonitorResizeGrip", frame)
   resize:SetSize(16, 16)
-  resize:SetPoint("BOTTOMRIGHT")
+  resize:SetPoint("BOTTOMRIGHT", -2, 2)
   resize:EnableMouse(true)
   resize:SetScript("OnMouseDown", function()
     frame:StartSizing("BOTTOMRIGHT")
@@ -564,7 +573,53 @@ function CounterIt:OpenActiveTasksMonitor()
   resize:SetAlpha(0.7)
 
   self:RenderActiveTasks()
-end
+
+  local toggleTrackingButton = nil
+
+  -- Toggle Tracking Button
+  toggleTrackingButton = CreateFrame("Button", "CounterItMonitorToggleTrackingBtn", frame) 
+  toggleTrackingButton:SetSize(28, 28) 
+  -- Posición en la esquina superior derecha, 
+  toggleTrackingButton:SetPoint("TOPLEFT", 5, -5)
+  toggleTrackingButton:SetFrameStrata("HIGH") 
+  toggleTrackingButton:Show()
+
+  -- Crea la textura para el icono dentro del botón
+  toggleTrackingButton.icon = toggleTrackingButton:CreateTexture(nil, "ARTWORK")
+  toggleTrackingButton.icon:SetAllPoints(true)
+  toggleTrackingButton.icon:SetTexture("")
+  toggleTrackingButton.icon:SetTexCoord(0.1, 0.9, 0.1, 0.9) -- Recorta un poco los bordes de la textura si es necesario
+
+  -- Scripts para el botón (OnClick, OnEnter, OnLeave)
+  toggleTrackingButton:SetScript("OnClick", function()
+    CounterIt.db.profile.enableTracking = not CounterIt.db.profile.enableTracking
+    CounterIt:UpdateTrackingToggleButtonText()
+    if CounterIt.db.profile.enableTracking then
+      print("|cff00ff00Counter-It:|r " .. L["TRACKING_RESUMED"])
+      -- Opcional: timer para las tasas, inicia aquí
+      -- CounterIt:StartRateUpdateTimer()
+    else
+      print("|cffff0000Counter-It:|r " .. L["TRACKING_PAUSED"])
+      -- Opcional: timer para las tasas, detenlo aquí
+      -- CounterIt:StopRateUpdateTimer()
+    end
+  end)
+
+  toggleTrackingButton:SetScript("OnEnter", function(self)
+    if self.tooltipText then
+      GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+      GameTooltip:SetText(self.tooltipText, 1, 1, 1) -- Set the tooltip with full white color
+      GameTooltip:Show()
+    end
+  end)
+
+  toggleTrackingButton:SetScript("OnLeave", GameTooltip_Hide)
+
+  self.activeMonitorFrame.toggleTrackingButton = toggleTrackingButton
+
+  self:UpdateTrackingToggleButtonText()
+
+end -- OpenActiveTasksMonitor
 
 --- Renderiza la lista de tareas activas y sus controles de interacción.
 function CounterIt:RenderActiveTasks()
@@ -582,7 +637,8 @@ function CounterIt:RenderActiveTasks()
 
   local parent = self.activeMonitorFrame.scrollContent
 
-  local container = CreateFrame("Frame", nil, parent)
+  -- Contenedor de todas las filas de tarea
+  local container = CreateFrame("Frame", "CounterItMonitorContainer", parent)
   container:SetSize(parent:GetWidth(), 1)
   container:SetPoint("TOPLEFT", 0, 0)
   container:SetPoint("TOPRIGHT", 0, 0)
@@ -590,15 +646,16 @@ function CounterIt:RenderActiveTasks()
   self.activeTasksFrame = container
 
   local tasks = self.globalTasks()
---local counters = self.charCounters()
   local charTasks = self.charDb.char.tasks or {}
 
   local lastRow
+  local rowIndex = 0
   for taskID, task in pairs(tasks) do
-  --if task.active then
     local st = charTasks[taskID]
     if st and st.active then
-      local row = CreateFrame("Frame", nil, container)
+      rowIndex = rowIndex + 1
+      local baseName = "CounterItTask_" .. rowIndex .. "_"
+      local row = CreateFrame("Frame", baseName .. "Row", container)
       row:SetSize(container:GetWidth(), 28)
       row:SetPoint("TOPLEFT", lastRow or container, lastRow and "BOTTOMLEFT" or "TOPLEFT", 0, lastRow and -4 or 0)
 
@@ -608,7 +665,7 @@ function CounterIt:RenderActiveTasks()
       -- Botones: -, +, R, P
       local function createButton(label, xOffset, onClick)
         local b = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-        b:SetSize(24, 24)
+        b:SetSize(BUTTON_SIZE, BUTTON_SIZE)
         b:SetText(label)
         b:SetPoint("LEFT", row, "LEFT", xOffset, 0)
         b:SetScript("OnClick", onClick)
@@ -616,75 +673,149 @@ function CounterIt:RenderActiveTasks()
       end
 
       local btnDec = createButton("-", 4, function()
-      --counters[taskID] = math.max(0, (counters[taskID] or 0) - 1)
         st.progressManual = math.max(0, (st.progressManual or 0) - 1)
         self:Debug("btnDec", st.progressManual)
         self:UpdateTaskProgress(taskID, task)
-        self:RenderActiveTasks()
+      --self:RenderActiveTasks()
+        self:SendMessage("CounterIt_UpdateTasksMonitor")
       end)
       btnDec:SetEnabled(hasManualRule)
 
-      local btnInc = createButton("+", 32, function()
-      --if (counters[taskID] or 0) < task.goal then
+      local btnInc = createButton("+", 4+24, function()
         if (st.progressManual or 0) < (task.goal or 1) then
-        --counters[taskID] = (counters[taskID] or 0) + 1
           st.progressManual = (st.progressManual or 0) + 1
           self:UpdateTaskProgress(taskID, task)
-          self:RenderActiveTasks()
+        --self:RenderActiveTasks()
+          self:SendMessage("CounterIt_UpdateTasksMonitor")
         end
       end)
       btnInc:SetEnabled(hasManualRule)
 
-      local btnReset = createButton("R", 60, function()
+      local btnReset = createButton("R", 4+(24 * 2), function()
         self:Debug("btnReset", st.progressManual)
         st.progressManual = 0
         st.completed = false
-      --counters[taskID] = 0
-      --task.completed = false
-        local bRefresh = self:UpdateTaskProgress(taskID, task, true)
+        local bRefresh = self:UpdateTaskProgress(taskID, task, true) or true
         if bRefresh then
           self:Print("Reset on", taskID)
-          self:RenderActiveTasks()
+        --self:RenderActiveTasks()
+          self:SendMessage("CounterIt_UpdateTasksMonitor")
         end
       end)
 
-      local btnPause = createButton("P", 88, function()
-      --task.active = false
+      local btnPause = createButton("P", 4+(24 * 3), function()
         st.active = false
-        self:RenderActiveTasks()
-        if self.taskManagerFrame then
-          self:RenderAllTasks()
-        end
+      --self:RenderActiveTasks()
+        self:SendMessage("CounterIt_UpdateTasksMonitor")
+      --if self.taskManagerFrame then
+      --  self:RenderAllTasks()
+      --end
+        self:SendMessage("CounterIt_UpdateAllTasks")
       end)
 
-      -- Icono
-      local icon = CreateFrame("Frame", nil, row)
-      icon:SetSize(24, 24)
+--[[
+      -- Icono - Frame - baseName .. "Icon"
+      local icon = CreateFrame("Frame", baseName .. "IconFrame", row)
+      icon:SetSize(BUTTON_SIZE, BUTTON_SIZE)
       icon.texture = icon:CreateTexture(nil, "BACKGROUND")
       icon.texture:SetAllPoints(true)
       icon.texture:SetTexture(task.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
-      icon:SetPoint("LEFT", btnPause, "RIGHT", 8, 0)
+      icon:SetPoint("LEFT", btnPause, "RIGHT", ROW_HORZ_GAP, 0)
 
-      -- Contador
-      local textCount = CreateFrame("Frame", nil, row)
-      textCount:SetSize(50, 24)
+      self:Debug("frame-icon; ", baseName, BUTTON_SIZE, ROW_HORZ_GAP)
+]]--
+--[[
+      local secureTabButton = CreateFrame("Button", nil, CollectionsJournal, "SecureActionButtonTemplate")
+      secureTabButton:SetAttribute("type", "click")
+      secureTabButton:SetAttribute("clickbutton", CollectionsJournalTab4)
+      secureTabButton:SetPoint("TOPLEFT", tab, "TOPLEFT")
+      secureTabButton:SetPoint("BOTTOMRIGHT", tab, "BOTTOMRIGHT")
+      secureTabButton:RegisterForClicks("AnyDown")
+        
+      secureTabButton:HookScript("OnClick", function()
+          tab:Click()
+          if selectedTab ~= ManuscriptsSkillLineManuscriptsTab:GetID() then
+              ManuscriptsJournal:Hide()
+          end
+      end)
+
+      self:SetAttribute("type", "macro");
+      self:SetAttribute("macrotext1", "/worldmarker 4");
+
+  ]]--
+      -- Icono - Button - baseName .. "IconButton"
+      local icon = CreateFrame("Button", baseName .. "IconButton", row, "SecureActionButtonTemplate")
+      icon:SetAttribute("type", "item");
+      icon:RegisterForClicks("AnyDown")
+
+      icon:SetSize(BUTTON_SIZE, BUTTON_SIZE) -- O el tamaño que ya le tengas puesto
+      icon.texture = icon:CreateTexture(nil, "BACKGROUND")
+      icon.texture:SetAllPoints(true)
+      icon.texture:SetTexture(task.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+      icon:SetPoint("LEFT", btnPause, "RIGHT", ROW_HORZ_GAP, 0)
+
+      -- Añadir un Script de OnClick al icono
+      icon:HookScript("OnClick", function(self, buttonClicked)
+        -- Verificar si la tarea tiene un itemID definido
+        if task.itemID then
+          -- Verificar si el objeto es "usable"
+          local itemLink = C_Item.GetItemLink(task.itemID)
+          if itemLink then -- Asegurarse de que el itemLink es válido
+            local isUsable, noMana = IsUsableItem(itemLink) -- Función de WoW API
+            if isUsable then
+              UseItem(itemLink) -- Función de WoW API para usar el objeto
+              CounterIt:Print(L["USED_ITEM"]:format(GetItemInfo(task.itemID))) -- Mensaje de confirmación
+              -- Opcional: Actualizar el contador si el uso consume el objeto o tiene un CD
+              -- self:SendMessage("CounterIt_UpdateTasksMonitor")
+              -- self:SendMessage("CounterIt_UpdateAllTasks")
+            else
+              -- Opcional: Feedback si no es usable (ej. en cooldown, sin mana, no tienes el item)
+              -- CounterIt:Print(L["ITEM_NOT_USABLE"]:format(GetItemInfo(task.itemID)))
+            end
+          else
+            -- Opcional: Feedback si el itemID no es válido (no existe itemLink)
+            -- CounterIt:Print(L["INVALID_ITEM_ID"]:format(task.itemID))
+          end
+        end
+      end)
+
+      -- NUEVO: Añadir un script OnEnter/OnLeave para mostrar el tooltip del objeto
+      icon:SetScript("OnEnter", function(self)
+        if task.itemID then
+          GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+          GameTooltip:SetItemByID(task.itemID)
+          GameTooltip:Show()
+        end
+      end)
+
+      icon:SetScript("OnLeave", function(self)
+        GameTooltip:Hide()
+      end)
+
+    --self:Debug("textCount; ", baseName)
+
+      -- Contador - baseName .. "CountText" 
+      local textCount = CreateFrame("Frame", baseName .. "CountText", row)
+      textCount:SetSize(50, 24) -- BUTTON_SIZE
       local label = textCount:CreateFontString(nil, "OVERLAY", "GameFontNormal")
       local progress = (st.progressManual or 0)
       --progress = self:GetTaskProgress(task, progress)--REJECTED--TODO
       label:SetText(progress .. " / " .. task.goal or 1)
       label:SetTextColor(st.completed and 0 or 1, st.completed and 1 or 1, 0)
       label:SetAllPoints(true)
-      textCount:SetPoint("LEFT", icon, "RIGHT", 8, 0)
+      textCount:SetPoint("LEFT", icon, "RIGHT", 8, 0) -- ROW_HORZ_GAP
 
-      -- Descripción
-      local desc = CreateFrame("Frame", nil, row)
-      desc:SetSize(140, 24)
+    --self:Debug("textDesc; ", baseName)
+
+      -- Descripción - baseName .. "DescText" 
+      local desc = CreateFrame("Frame", baseName .. "DescText", row)
+      desc:SetSize(140, 24) -- BUTTON_SIZE
       local descLabel = desc:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
       descLabel:SetJustifyH("LEFT")
       descLabel:SetJustifyV("MIDDLE")
       descLabel:SetText(task.description or "")
       descLabel:SetAllPoints(true)
-      desc:SetPoint("LEFT", textCount, "RIGHT", 8, 0)
+      desc:SetPoint("LEFT", textCount, "RIGHT", 8, 0) -- ROW_HORZ_GAP
 
       lastRow = row
     end
@@ -692,6 +823,29 @@ function CounterIt:RenderActiveTasks()
 
   local totalHeight = (lastRow and lastRow:GetBottom() and math.abs(lastRow:GetBottom() - container:GetTop()) + 32) or 100
   container:SetHeight(totalHeight)
+end -- RenderActiveTasks
+
+--- Función para actualizar la textura y el tooltip del botón de toggle de seguimiento.
+function CounterIt:UpdateTrackingToggleButtonText()
+  self:Debug("UpdateTrackingToggleButtonText")
+  -- Este 'if' es crucial, ya que el botón puede no existir si el monitor no está abierto
+  if not self.activeMonitorFrame or not self.activeMonitorFrame.toggleTrackingButton then 
+    self:Debug("toggleTrackingButton")
+    return 
+  end
+
+  local button = self.activeMonitorFrame.toggleTrackingButton
+
+  if self.db.profile.enableTracking then
+    button.icon:SetTexture("Interface\\TIMEMANAGER\\PauseButton") -- Icono de pausa
+    --button.icon:SetTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Up")
+    button.tooltipText = L["TOOLTIP_PAUSE_TRACKING"] -- Texto del tooltip para pausar
+  else
+    button.icon:SetTexture("Interface\\TIMEMANAGER\\ResetButton") -- Icono de play/grabar
+    button.tooltipText = L["TOOLTIP_RESUME_TRACKING"] -- Texto del tooltip para reanudar
+  end
+  -- Asegúrate de que OnLeave siempre esté configurado (aunque ya lo estaba en el OnClick, es buena práctica aquí)
+  button:SetScript("OnLeave", GameTooltip_Hide) 
 end
 
 --- Renderiza la lista de reglas asociadas a una tarea.
@@ -853,8 +1007,10 @@ function CounterIt:OpenTaskEditor(taskID)
 
     self:Print(format(L["TASK_SAVED"], desc))
     self.taskEditor:Hide()
-    self:RenderActiveTasks()
-    self:RenderAllTasks()
+  --self:RenderActiveTasks()
+    self:SendMessage("CounterIt_UpdateTasksMonitor")
+  --self:RenderAllTasks()
+    CounterIt:SendMessage("CounterIt_UpdateAllTasks")
   end)
   self.taskEditor:AddChild(saveButton)
 end
@@ -984,22 +1140,36 @@ function CounterIt:OpenRuleEditor(task, existingRule, callback)
 end
 
 --- @param taskID string           -- ID de la tarea
-function CounterIt:ActivateTask(taskID)
+---@return TaskData?          -- Tarea creada (o nil si falla).
+function CounterIt:CreateTask(taskID, activate)
   local charTasks = self.charDb.char.tasks
+  local newTask
   if not charTasks[taskID] then
-    charTasks[taskID] = {
+    newTask = {
       taskID = taskID,
-      active = true,
+      active = activate,
       completed = false,
       progressManual = 0,
       rulesProgress = {},
     }
+    charTasks[taskID] = newTask
+  end
+
+  return newTask
+end
+
+--- @param taskID string           -- ID de la tarea
+function CounterIt:ActivateTask(taskID)
+  local charTasks = self.charDb.char.tasks
+  if not charTasks[taskID] then
+    CreateTask(taskID, true)
   else
     charTasks[taskID].active = true
   end
-  if self.activeMonitorFrame then 
-    self:RenderActiveTasks() 
-  end
+--if self.activeMonitorFrame then 
+--  self:RenderActiveTasks() 
+--end
+  self:SendMessage("CounterIt_UpdateTasksMonitor")
 end
 
 -- ui.lua - fin del archivo 

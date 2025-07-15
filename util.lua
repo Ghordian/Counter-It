@@ -60,8 +60,10 @@ function CounterIt:ImportTasks(encoded)
 
   self:Print(L["IMPORT_SUCCESS"])
 
-  self:RenderAllTasks()
-  self:RenderActiveTasks()
+--self:RenderAllTasks()
+  self:SendMessage("CounterIt_UpdateAllTasks")
+--self:RenderActiveTasks()
+  self:SendMessage("CounterIt_UpdateTasksMonitor")
 end
 
 -- Ventana gráfica para exportar/importar texto

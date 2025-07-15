@@ -5,7 +5,7 @@
 ## Notes-esES: Seguimiento de tareas personalizadas con contadores manuales
 
 ## Author: Ghordjan
-## Version: 0.1.9
+## Version: 0.1.10.2
 
 ## X-WoWI-ID:26938
 ## X-Curse-Project-ID: 1289207
@@ -18,7 +18,7 @@
 ## IconTexture: Interface\AddOns\Counter-It\Media\icon.tga
 
 #-# Dependencies: Ace3
-## OptionalDeps: Ace3
+## OptionalDeps: Ace3, LibTourist-3.0
 
 Libs\LibStub\LibStub.lua
 Libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
@@ -34,6 +34,8 @@ Libs\AceSerializer-3.0\AceSerializer-3.0.lua
 Libs\LibDeflate\LibDeflate.lua
 Libs\AceConfig-3.0\AceConfig-3.0.xml
 Libs\AceDBOptions-3.0\AceDBOptions-3.0.xml
+Libs\HereBeDragons\HereBeDragons-2.0.lua
+Libs\LibTourist-3.0\LibTourist-3.0.lua
 
 locales\enUS.lua
 locales\esES.lua

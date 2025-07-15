@@ -89,6 +89,22 @@ L["ROLE_AUTO_COUNT"] = "Автоматический подсчёт"
 L["ROLE_ACTIVATION"] = "Активация"
 L["NO_ROLE"] = "нет роли"
 
+-- ui - rule zone type
+L["RULE_ZONE"] = "Zone/Map" --TODO
+L["RULE_ZONE_IDS_LABEL"] = "Zone/Map IDs (comma-separated)" --TODO
+L["RULE_ZONE_NAME_LABEL"] = "Zone Name (optional, for display)" --TODO
+L["RULE_ZONE_SEARCH_LABEL"] = "Search Zone" --TODO
+L["LOOKUP_ZONE"] = "Lookup Zone" --TODO
+L["SELECT_ZONE"] = "Select Zone" --TODO
+L["SEARCH_ZONE_HINT"] = "Search for zones by name" --TODO
+L["FILTER_RESULTS"] = "Filter results" --TODO
+L["ADD"] = "Add" --TODO
+L["ADDED"] = "Added" --TODO
+L["CONFIRM_SELECTION"] = "Confirm Selection" --TODO
+L["ENTER_ZONE_SEARCH_TERM"] = "Please enter a search term for zones." --TODO
+L["TASK_ACTIVATED_ZONE"] = "Task '%s' activated by entering zone %s." --TODO
+L["TASK_DEACTIVATED_ZONE"] = "Task '%s' deactivated by leaving zone %s." --TODO
+
 L["SCROLLFRAME_DEBUG"] = "scrollFrame = %s"
 
 -- events
@@ -96,12 +112,27 @@ L["SIMULATE_PET"] = "Симулировано событие поимки пит
 L["SPELLCAST_ID"] = "CheckSpellCast; %s"
 L["SPELLCAST_NAME"] = "CheckSpellCast; %s"
 L["SPELLCAST_MATCH"] = "CheckSpellCast; совпадение; %s"
+L["TASK_ACTIVATED_BY_INVENTORY"] = "Task '%s' triggered by item in inventory."
 
 -- template
 L["TASK_TEMPLATE_CREATED"] = "Задача создана из шаблона: %s"
 L["TEMPLATE_NOT_FOUND"] = "Шаблон не найден: %s"
 L["TITLE_SELECT_TEMPLATE"] = "Выбрать шаблон"
 L["STATUSTEXT_SELECT_TEMPLATE"] = "Выберите шаблон для создания задачи"
+
+L["side-with-a-cartel-hint"] = "Выбрали, с каким картелем вы будете сотрудничать на этой неделе"
+L["ship-right-hint"] = "Выполнить 10 работ."
+L["reclaimed-scrap-hint"] = "Собрано 100 пустых банок из-под Каджа'Колы из Гор ХЛАМа"
+L["side-gig-hint"] = "Выполнена побочная работа. Побочные работы доступны в главном транспортном узле"
+L["war-mode-violence-hint"] = "Победить пять игроков в режиме войны в Нижней Шахте"
+L["go-fish-hint"] = "Рыбалка в Нижней Шахте"
+L["gotta-catch-at-least-a-few-hint"] = "Поймать 5 диких питомцев"
+L["rare-rivals-hint"] = "Победить 3 редких НПС в Нижней Шахте"
+L["clean-the-sidestreets-hint"] = "Завершить вылазку Переулочного Шлюза"
+L["time-to-vacate-hint"] = "Завершено вылазку в месте раскопок 9"
+L["desire-to-d-r-i-v-e-hint"] = "Завершить две гонки в Нижней Шахте"
+L["kaja-cruising-hint"] = "Сбор банок во время вождения Стремглава G-99 (транспорт Р.А.З.Г.О.Н.)"
+L["garbage-day-hint"] = "Сбор мусора"
 
 L["side-with-a-cartel"] = "Выбрали, с каким картелем вы будете сотрудничать на этой неделе"
 L["ship-right"] = "Выполнить 10 работ."
@@ -130,3 +161,8 @@ L["DEBUG_MODE_DESC"] = "Включает/выключает режим отла�
 L["ManualRulesFixed"] = "Ручные правила без параметра 'count' исправлены."
 L["TemplatesReapplied"] = "Шаблоны переприменены к %d существующим задачам."
 L["ManualRuleFixedDebug"] = "Задача '%s': ручное правило %d не имело действительного 'count', установлено в %d (цель=%s)"
+
+--templates
+L["BOSS_KILL_TASK_DESC"] = "Defeat %s"
+L["BOSS_KILL_TASK_HINT"] = "This task is completed by defeating %s %d times."
+L["BOSS_KILL_TASK_HINT_INSTANCE"] = "This task is completed by defeating %s %d times in %s."

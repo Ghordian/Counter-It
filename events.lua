@@ -30,6 +30,10 @@ function CounterIt:RegisterRelevantEvents()
   self:RegisterEvent("BAG_UPDATE_DELAYED")
 
   self:RegisterEvent("ACCOUNT_CHARACTER_CURRENCY_DATA_RECEIVED")
+  
+  -- NUEVO: Eventos para la detección de zonas
+  self:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+  self:RegisterEvent("ZONE_CHANGED") -- General zone change, might be useful for subzones or instance changes
 end
 
 --- Handler que se dispara cuando el addon se habilita (login, /reload, etc).
@@ -47,7 +51,7 @@ function CounterIt:OnEnable()
 
   self:RegisterEvent("PLAYER_ENTERING_WORLD")
 
---  self:CheckTriggersFromActiveQuests()
+  self:CheckTriggersFromActiveQuests()
 
   self:InitConfig()
 end
@@ -71,6 +75,10 @@ function CounterIt:UnregisterRelevantEvents()
   self:UnregisterEvent("BAG_UPDATE_DELAYED")
 
   self:UnregisterEvent("ACCOUNT_CHARACTER_CURRENCY_DATA_RECEIVED")
+
+  -- NUEVO: Desregistrar eventos de zona
+  self:UnregisterEvent("ZONE_CHANGED_NEW_AREA")
+  self:UnregisterEvent("ZONE_CHANGED")
 end
 
 --- Handler que se dispara cuando el addon se deshabilita.
@@ -182,17 +190,89 @@ function CounterIt:PLAYER_ENTERING_WORLD(isLogin, isReload)
 ]]--
   if isLogin or isReload then
     self:Debug("PLAYER_ENTERING_WORLD")
-    --self:Debug("loaded the UI")
     self:CheckAutoTriggersOnLogin()
+
     if not hasScannedInventory then
       self:ScanInventoryForAutoTriggers()
       hasScannedInventory = true
+      self:Debug("hasScannedInventory")
     end
+    -- Llamar a la función para activar tareas existentes por ítems
+    self:AutoActivateTasksByInventory()
+
     self:CheckQuestRulesForActiveTasks()
+    self:CheckZoneRulesForActivation() -- Comprobar reglas de zona al entrar al mundo
+    self:SendMessage("CounterIt_UpdateTasksMonitor")
+
   else
   --self:Debug("zoned between map instances")
   end
 end
+
+--[[
+  https://warcraft.wiki.gg/wiki/ZONE_CHANGED_NEW_AREA
+  Payload
+    event
+        string : ZONE_CHANGED_NEW_AREA
+    zoneName
+        string
+    isSubZone
+        boolean
+    isBattleground
+        boolean
+    isInstance
+        boolean
+    instanceType
+        string - "none", "arena", "pvp", "raid", "scenario", "party", "dungeon"
+    instanceDifficulty
+        number
+    instanceDifficultyName
+        string
+  ]]--
+--- NUEVO: Handler para el evento ZONE_CHANGED_NEW_AREA.
+--- Se dispara al entrar en una nueva zona principal (no subzona).
+function CounterIt:ZONE_CHANGED_NEW_AREA()
+    self:Debug("ZONE_CHANGED_NEW_AREA: Checking zone rules.")
+    self:CheckZoneRulesForActivation()
+end
+
+--[[
+  https://warcraft.wiki.gg/wiki/ZONE_CHANGED
+  Payload
+    event
+        string : ZONE_CHANGED
+    zoneName
+        string
+    isSubZone
+        boolean
+    isBattleground
+        boolean
+    isInstance
+        boolean
+    instanceType
+        string - "none", "arena", "pvp", "raid", "scenario", "party", "dungeon"
+    instanceDifficulty
+        number
+    instanceDifficultyName
+        string
+  ]]--
+--- NUEVO: Handler para el evento ZONE_CHANGED (más general).
+--- Puede ser útil para detectar cambios de subzona o instancias que ZONE_CHANGED_NEW_AREA no capture.
+function CounterIt:ZONE_CHANGED()
+    -- Solo si es una zona diferente a la última comprobada para evitar spam
+    -- O si es un cambio de instancia que no fue un NEW_AREA
+    -- Para simplificar, podemos llamar a la misma función, pero hay que ser cuidadosos con el rendimiento.
+    -- Por ahora, dejaremos que ZONE_CHANGED_NEW_AREA sea el principal trigger.
+    -- Si necesitas detectar cambios de subzona o instancia sin cambiar de mapa principal, aquí iría la lógica.
+    -- Por ejemplo:
+    -- local currentMapID = C_Map.GetBestMapForUnit("player")
+    -- if currentMapID ~= self.lastCheckedMapID then
+    --     self:Debug("ZONE_CHANGED: New map ID detected, checking zone rules.")
+    --     self:CheckZoneRulesForActivation()
+    --     self.lastCheckedMapID = currentMapID
+    -- end
+end
+
 
 --[[
   https://warcraft.wiki.gg/wiki/UNIT_QUEST_LOG_CHANGED
@@ -251,17 +331,10 @@ end
 
 --[[
   https://warcraft.wiki.gg/wiki/BAG_UPDATE_DELAYED
+  Fired after all applicable BAG_UPDATE events for a specific action have been fired.
   ]]--
 --- Handler para el evento BAG_UPDATE_DELAYED. Gestiona triggers de objetos en el inventario.
 function CounterIt:BAG_UPDATE_DELAYED()
-
-    if event == "BAG_UPDATE" then
-        -- Solo procesa si hay ítems para monitorear
-        if next(self.itemsToMonitorForActivation) then
-            self:CheckForActivatedItemRules()
-        end
-    end
-    -- ... otros manejadores de eventos ...
 
   self.processedItemTriggers = self.processedItemTriggers or {}
 
@@ -275,7 +348,8 @@ function CounterIt:BAG_UPDATE_DELAYED()
   -- Lógica de auto-pausado
   local bRefresh = self:AutoPauseTasksByInventory()
   if bRefresh then
-    self:RenderActiveTasks()
+  --self:RenderActiveTasks()
+    self:SendMessage("CounterIt_UpdateTasksMonitor")
   end
 end
 
@@ -315,7 +389,7 @@ end
 --- Handler para el evento UNIT_INVENTORY_CHANGED.
 ---@param unitTarget string
 function CounterIt:UNIT_INVENTORY_CHANGED(unitTarget)
-  self:Debug("UNIT_INVENTORY_CHANGED")
+--self:Debug("UNIT_INVENTORY_CHANGED")
   if unitTarget and unitTarget ~= "player" then return end
   if unitTarget == "player" then
     self:ScanInventoryForNewItems()
@@ -374,7 +448,8 @@ function CounterIt:CheckSpellCast(spellID, target)
     end
   end
   if needRefresh then
-    self:RenderActiveTasks()
+  --self:RenderActiveTasks()
+    self:SendMessage("CounterIt_UpdateTasksMonitor")
   end
 end
 
@@ -409,7 +484,8 @@ function CounterIt:EvaluateQuestRules(questID)
     end
   end
   if needRefresh then
-    self:RenderActiveTasks()  
+  --self:RenderActiveTasks()
+    self:SendMessage("CounterIt_UpdateTasksMonitor")
   end
 end
 
@@ -435,7 +511,8 @@ function CounterIt:HandlePetBattleCaptured()
     end
   end
   if needRefresh then
-    self:RenderActiveTasks()
+  --self:RenderActiveTasks()
+    self:SendMessage("CounterIt_UpdateTasksMonitor")
   end
 end
 
@@ -485,7 +562,8 @@ function CounterIt:OnItemReceived(itemID, count)
     end
   end
   if needRefresh then
-    self:RenderActiveTasks()
+  --self:RenderActiveTasks()
+    self:SendMessage("CounterIt_UpdateTasksMonitor")
   end
 end
 
@@ -568,6 +646,44 @@ function CounterIt:CheckQuestRulesForActiveTasks()
   end
 end
 
+--- Activa tareas inactivas si los ítems requeridos por sus reglas de activación están presentes.
+--- Esta es la función "inversa" a AutoPauseTasksByInventory, basada en la posesión de ítems.
+---@return boolean needRefresh True si se activó alguna tarea y la UI necesita ser actualizada.
+function CounterIt:AutoActivateTasksByInventory()
+  if not self:IsTrackingEnabled() then return false end
+  self:Debug("AutoActivateTasksByInventory")
+
+  local needRefresh = false
+  local charTasks = self.charDb.char.tasks
+
+  for taskID, task in pairs(self.globalTasks()) do
+    local st = charTasks[taskID] or self:CreateTask(taskID, false)
+    if not st.active and task.rules then 
+      self:Debug("charTasks", tostring(taskID))
+      local shouldActivate = true 
+      local hasItemActivationRule = false 
+
+      for idx, rule in ipairs(task.rules) do
+        if rule.type == "item" then
+          -- and rule.role == CounterIt.RuleRoles.ACTIVATION 
+          hasItemActivationRule = true
+          if not self:HasItem(rule.itemID) then
+            shouldActivate = false
+            break
+          end
+        end
+      end
+
+      if hasItemActivationRule and shouldActivate then
+        self:ActivateTask(taskID)
+        self:Debug(format(L["TASK_ACTIVATED_BY_INVENTORY"], task.description))
+        needRefresh = true
+      end
+    end
+  end
+  return needRefresh
+end
+
 --- Escanea el inventario al entrar al mundo y activa tareas por plantillas si hay ítems presentes.
 function CounterIt:ScanInventoryForAutoTriggers()
   if not self:IsTrackingEnabled() then return end
@@ -576,6 +692,7 @@ function CounterIt:ScanInventoryForAutoTriggers()
   self:Debug("ScanInventoryForAutoTriggers")
 
   self.processedItemTriggers = self.processedItemTriggers or {}
+  local needRefresh = false
 
   for itemID, _ in pairs(self.AutoTrigger.Rules["ITEM_RECEIVED"]) do
     self:Debug("ITEM_RECEIVED", itemID)
@@ -585,11 +702,16 @@ function CounterIt:ScanInventoryForAutoTriggers()
         for _, templateID in ipairs(templates) do
           self:HandleAutoTrigger(templateID)
         end
-        
         self.processedItemTriggers[itemID] = true
+        needRefresh = true
       end
     end
   end
+
+  if needRefresh then
+    self:SendMessage("CounterIt_UpdateTasksMonitor")
+  end
+  return needRefresh
 end
 
 --- Actualiza el progreso de todas las tareas activas.
@@ -644,71 +766,138 @@ end
 
 -- En core.lua (o un módulo de lógica relevante)
 function CounterIt:CheckForActivatedItemRules()
-    local activatedAnyTask = false
+  local activatedAnyTask = false
 
-    -- Itera solo sobre los ítems que nos interesan para la activación
-    for itemID, _ in pairs(self.itemsToMonitorForActivation) do
-        local currentCount = GetItemCount(itemID)
-        local previousCount = self.itemCountsBeforeBagUpdate[itemID] or 0
+  -- Itera solo sobre los ítems que nos interesan para la activación
+  for itemID, _ in pairs(self.itemsToMonitorForActivation) do
+    local currentCount = GetItemCount(itemID)
+    local previousCount = self.itemCountsBeforeBagUpdate[itemID] or 0
 
-        -- Si la cantidad actual es mayor que la anterior, el ítem ha sido adquirido (o más cantidad)
-        if currentCount > previousCount then
-            -- El ítem con este itemID acaba de ser adquirido, ahora buscamos tareas
-            -- No importa la cantidad específica adquirida con BAG_UPDATE, solo que cambió.
-            -- Si la regla requiere 'X' cantidad, GetItemCount(itemID) ya lo verifica.
+      -- Si la cantidad actual es mayor que la anterior, el ítem ha sido adquirido (o más cantidad)
+    if currentCount > previousCount then
+      -- El ítem con este itemID acaba de ser adquirido, ahora buscamos tareas
+      -- No importa la cantidad específica adquirida con BAG_UPDATE, solo que cambió.
+      -- Si la regla requiere 'X' cantidad, GetItemCount(itemID) ya lo verifica.
 
-            -- Bucle para las tareas existentes del personaje
-            for taskID, taskData in pairs(self.db.global.tasks) do
-                local charTaskState = self.charDb.char.tasks[taskID]
+      -- Bucle para las tareas existentes del personaje
+      for taskID, taskData in pairs(self.db.global.tasks) do
+        local charTaskState = self.charDb.char.tasks[taskID]
 
-                -- Solo intentamos activar si la tarea no está ya activa
-                if not taskState or not taskState.active then
-                    for _, rule in ipairs(taskData.rules) do
-                        if rule.type == "item" and rule.role == self.RuleRoles.ACTIVATION and rule.itemID == itemID then
-                            local requiredCount = rule.count or 1
-                            if currentCount >= requiredCount then
-                                -- ¡Regla de activación de ítem cumplida!
-                                self:ActivateTask(taskID)
-                                activatedAnyTask = true
-                                break -- Ya activamos esta tarea, no necesitamos revisar más reglas de esta tarea.
-                            end
-                        end
-                    end
-                end
+        -- Solo intentamos activar si la tarea no está ya activa
+        if not charTaskState or not charTaskState.active then -- Corregido: Usar charTaskState
+          for _, rule in ipairs(taskData.rules) do
+            if rule.type == "item" and rule.role == self.RuleRoles.ACTIVATION and rule.itemID == itemID then
+              local requiredCount = rule.count or 1
+              if currentCount >= requiredCount then
+                -- ¡Regla de activación de ítem cumplida!
+                self:ActivateTask(taskID)
+                activatedAnyTask = true
+                break -- Ya activamos esta tarea, no necesitamos revisar más reglas de esta tarea.
+              end
             end
-
-            -- Opcional: Bucle para activar plantillas que se añaden como nuevas tareas
-            -- Esto es si quieres que al obtener un ítem, una plantilla se convierta en una nueva tarea activa.
-            -- for templateID, templateData in pairs(self.taskTemplates) do
-            --     for _, rule in ipairs(templateData.rules) do
-            --         if rule.type == "item" and rule.role == self.RuleRoles.ACTIVATION and rule.itemID == itemID then
-            --             local requiredCount = rule.count or 1
-            --             if currentCount >= requiredCount then
-            --                 -- Verificar si ya existe una tarea con este templateID y no está activa
-            --                 local existingTaskID = templateID -- Asumiendo que templateID es también taskID
-            --                 if not self.charDb.char.tasks[existingTaskID] or not self.charDb.char.tasks[existingTaskID].active then
-            --                     self:AddTaskFromTemplate(templateID) -- Necesitarías una función para esto
-            --                     activatedAnyTask = true
-            --                 end
-            --                 break
-            --             end
-            --         end
-            --     end
-            -- end
+          end
         end
+      end
+
+      -- Opcional: Bucle para activar plantillas que se añaden como nuevas tareas
+      -- Esto es si quieres que al obtener un ítem, una plantilla se convierta en una nueva tarea activa.
+      -- for templateID, templateData in pairs(self.taskTemplates) do
+      --     for _, rule in ipairs(templateData.rules) do
+      --         if rule.type == "item" and rule.role == self.RuleRoles.ACTIVATION and rule.itemID == itemID then
+      --             local requiredCount = rule.count or 1
+      --             if currentCount >= requiredCount then
+      --                 -- Verificar si ya existe una tarea con este templateID y no está activa
+      --                 local existingTaskID = templateID -- Asumiendo que templateID es también taskID
+      --                 if not self.charDb.char.tasks[existingTaskID] or not self.charDb.char.tasks[existingTaskID].active then
+      --                     self:AddTaskFromTemplate(templateID) -- Necesitarías una función para esto
+      --                     activatedAnyTask = true
+      --                 end
+      --                 break
+      --             end
+      --         end
+      --     end
+      -- end
     end
+  end
 
-    -- Finalmente, actualiza los conteos guardados para la próxima comparación
-    self:UpdateStoredItemCounts()
+  -- Finalmente, actualiza los conteos guardados para la próxima comparación
+  self:UpdateStoredItemCounts()
 
-    -- Si activamos alguna tarea, podrías querer hacer un refresh de UI general
-    -- if activatedAnyTask then
-    --   self:RenderAllTasks() -- o self:RenderActiveTasks() etc.
-    -- end
+  -- Si activamos alguna tarea, podrías querer hacer un refresh de UI general
+  -- if activatedAnyTask then
+  --   self:RenderAllTasks() -- o self:RenderActiveTasks() etc.
+  --   self:SendMessage("CounterIt_UpdateTasksMonitor")
+  -- end
+end
+
+--- NUEVO: Actualiza los conteos de ítems almacenados para la comparación en BAG_UPDATE_DELAYED.
+function CounterIt:UpdateStoredItemCounts()
+  self.itemCountsBeforeBagUpdate = self.itemCountsBeforeBagUpdate or {}
+  for itemID, _ in pairs(self.itemsToMonitorForActivation) do
+    self.itemCountsBeforeBagUpdate[itemID] = GetItemCount(itemID)
+  end
+end
+
+--- NUEVO: Comprueba las reglas de zona para activar/desactivar tareas.
+function CounterIt:CheckZoneRulesForActivation()
+  if not self:IsTrackingEnabled() then return end
+
+  local currentMapID = C_Map.GetBestMapForUnit("player") -- Obtiene el ID del mapa/zona actual
+  if not currentMapID then return end -- No se pudo obtener el ID del mapa
+
+  local tasks = self.globalTasks()
+  local charTasks = self.charDb.char.tasks
+  local needRefresh = false
+
+  for taskID, task in pairs(tasks) do
+    local st = charTasks[taskID]
+    if task.rules then
+      local shouldBeActive = false
+      local hasZoneRule = false
+
+      for idx, rule in ipairs(task.rules) do
+        if rule.type == "zone" then
+          hasZoneRule = true
+          if rule.role == "activation" and rule.zoneIDs then
+            -- Verificar si el jugador está en alguna de las zonas listadas
+            for _, zoneID in ipairs(rule.zoneIDs) do
+              if zoneID == currentMapID then
+                shouldBeActive = true
+                break -- Encontró una zona que coincide, no necesita revisar más reglas de zona para esta tarea
+              end
+            end
+          end
+        end
+        if shouldBeActive then break end -- Si ya se determinó que debe estar activa, salir del bucle de reglas
+      end
+
+      if hasZoneRule then -- Solo procesar si la tarea tiene una regla de zona
+        -- Lógica de activación/desactivación
+        if shouldBeActive and (not st or not st.active) then
+          -- La tarea debería estar activa pero no lo está, la activamos
+          self:ActivateTask(taskID)
+          self:Debug(format(L["TASK_ACTIVATED_ZONE"], task.description, currentMapID))
+          needRefresh = true
+        elseif not shouldBeActive and st and st.active then
+          -- La tarea está activa pero el jugador ya no está en la zona, la desactivamos
+          st.active = false
+          self:Debug(format(L["TASK_DEACTIVATED_ZONE"], task.description, currentMapID))
+          needRefresh = true
+        end
+      end
+    end
+  end
+
+  if needRefresh then
+  --self:RenderActiveTasks()
+    self:SendMessage("CounterIt_UpdateTasksMonitor")
+  --self:RenderAllTasks()
+    self:SendMessage("CounterIt_UpdateAllTasks")
+  end
 end
 
 -----------------------------------------------------
--- SLASH COMMANDS DE DEPURACIÓN
+-- SLASH COMMANDS FOR DEBUGGING
 -----------------------------------------------------
 
 -----------------------------------------------------

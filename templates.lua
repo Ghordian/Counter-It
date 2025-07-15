@@ -251,42 +251,12 @@ function CounterIt:CreateTaskFromTemplate(name)
   self.globalTasks()[taskID] = newTask -- taskID
   print(format(L["TASK_TEMPLATE_CREATED"], name, taskID))
 
-  if self.taskManagerFrame then
-    self:RenderAllTasks()
-  end
+--if self.taskManagerFrame then
+--  self:RenderAllTasks()
+--end
+  self:SendMessage("CounterIt_UpdateAllTasks")
 
   return newTask
-end
-
---- Marca reglas de tipo "quest" como completadas si el jugador ya completó la quest.
----@return nil
-function CounterIt:CheckCompletedQuestsAgainstTasks()
-  local completedQuestIDs = C_QuestLog.GetAllCompletedQuestIDs()
-  if not completedQuestIDs then return end
-
-  local needRefresh = false
-  local tasks = self.globalTasks()
-  local charTasks = self.charDb.char.tasks
-  for taskID, task in pairs(tasks) do
-    local st = charTasks[taskID]
-    if st.active and not st.completed and task.rules then
-      local needsUpdate = false
-      for idx, rule in ipairs(task.rules) do
-        if rule.type == "quest" and tContains(completedQuestIDs, rule.questID) then
-        --rule.progress = rule.count or 1
-        --self:EvaluateTaskCompletion(taskID, task)
-          needsUpdate = true
-        end
-      end
-      if needsUpdate then
-        self:UpdateTaskProgress(taskID, task)
-        needRefresh = true
-      end
-    end
-  end
-  if needRefresh then
-    self:RenderActiveTasks()
-  end
 end
 
 --[[
@@ -323,3 +293,39 @@ end
     },
   },
   ]]--
+
+ --[[
+--- Marca reglas de tipo "quest" como completadas si el jugador ya completó la quest.
+---@return nil
+function CounterIt:CheckCompletedQuestsAgainstTasks()
+  local completedQuestIDs = C_QuestLog.GetAllCompletedQuestIDs()
+  if not completedQuestIDs then return end
+
+  local needRefresh = false
+  local tasks = self.globalTasks()
+  local charTasks = self.charDb.char.tasks
+  for taskID, task in pairs(tasks) do
+    local st = charTasks[taskID]
+    if st.active and not st.completed and task.rules then
+      local needsUpdate = false
+      for idx, rule in ipairs(task.rules) do
+        if rule.type == "quest" and tContains(completedQuestIDs, rule.questID) then
+        --rule.progress = rule.count or 1
+        --self:EvaluateTaskCompletion(taskID, task)
+          needsUpdate = true
+        end
+      end
+      if needsUpdate then
+        self:UpdateTaskProgress(taskID, task)
+        needRefresh = true
+      end
+    end
+  end
+  if needRefresh then
+  --self:RenderActiveTasks()
+    self:SendMessage("CounterIt_UpdateTasksMonitor")
+  end
+end
+]]--
+
+-- templates.lua - fin del archivo

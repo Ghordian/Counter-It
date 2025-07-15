@@ -42,33 +42,22 @@ function CounterIt:EvaluateRule(taskID, task, idx)
   elseif rule.type == "spell" and rule.role == "auto-count" then
     -- Aquí puedes añadir lógica para spells con progreso real si lo implementas
     -- rp.progress = ...
+  elseif rule.type == "zone" and rule.zoneIDs then -- NUEVO: Evaluación para reglas de zona
+    local currentMapID = C_Map.GetBestMapForUnit("player")
+    local inZone = false
+    if currentMapID then
+        for _, zoneID in ipairs(rule.zoneIDs) do
+            if zoneID == currentMapID then
+                inZone = true
+                break
+            end
+        end
+    end
+    rp.completed = inZone
   end
 
   return rp.completed
 end
-
---[[
---- Evalúa una regla individual y marca si está completada.
---- @param taskID string           -- ID de la tarea
---- @param task TaskData           -- Estructura de la tarea
---- @param rule RuleData           -- Estructura de la regla a evaluar
---- @return boolean                -- true si la regla está completada, false si no
-function CounterIt:NoUsr_EvaluateRule(taskID, task, rule)
-  if rule.type == "manual" or rule.type == "petcapture" then
-    local count = getCounters()[taskID] or 0
-    rule.progress = count
-    rule.completed = (count >= rule.count or 1)
-  elseif rule.type == "quest" and rule.questID and type(rule.questID) == "number" then
-    rule.completed = C_QuestLog.IsQuestFlaggedCompleted(rule.questID) or C_QuestLog.ReadyForTurnIn(tonumber(rule.questID))
-  elseif rule.type == "item" and rule.itemID then
-    rule.completed = self:HasItem(rule.itemID)
-  elseif rule.type == "spell" and rule.role == "auto-count" then -- and rule.spellID 
-    local count = getCounters()[taskID] or 0
-    rule.progress = count
-  end
-  return rule.completed
-end
-]]--
 
 --- Comprueba si una regla está completada en el estado personal.
 --- @param taskID string           -- ID de la tarea
@@ -92,29 +81,23 @@ function CounterIt:CheckRuleCompletion(taskID, task, idx)
     if C_QuestLog.IsQuestFlaggedCompleted(rule.questID) or C_QuestLog.ReadyForTurnIn(rule.questID) then
       rp.completed = true
     end
+  elseif rule.type == "zone" and rule.zoneIDs then -- NUEVO: Comprobación de reglas de zona
+    local currentMapID = C_Map.GetBestMapForUnit("player")
+    local inZone = false
+    if currentMapID then
+        for _, zoneID in ipairs(rule.zoneIDs) do
+            if zoneID == currentMapID then
+                inZone = true
+                break
+            end
+        end
+    end
+    if inZone then
+        rp.completed = true
+    end
   end
   return rp.completed
 end
-
---[[
---- Comprueba si una regla está completada y actualiza su campo 'completed'.
---- @param rule RuleData           -- Regla a comprobar
---- @param task TaskData           -- Tarea asociada
-function CounterIt:NoUsar_CheckRuleCompletion(rule, task)
-  local progress = rule.progress or 0
-  local required = rule.count or task.goal
-
-  if rule.type == "spell" or rule.type == "manual" then
-    if progress >= required then
-      rule.completed = true
-    end
-  elseif rule.type == "quest" and rule.questID then
-    if C_QuestLog.IsQuestFlaggedCompleted(rule.questID) or C_QuestLog.ReadyForTurnIn(rule.questID) then
-      rule.completed = true
-    end
-  end
-end
-]]--
 
 --- Evalúa si una tarea debe considerarse completada en base a las reglas personales.
 --- INTERNA: Solo debe llamarse desde UpdateTaskProgress.
@@ -159,47 +142,6 @@ local function EvaluateTaskCompletion(st, task)
   end
 end
 
---[[
---- Evalúa si una tarea debe considerarse completada en base a sus reglas.
---- @param taskID string           -- ID de la tarea
---- @param task TaskData           -- Estructura de la tarea
-function CounterIt:NoUsar_EvaluateTaskCompletion(taskID, task)
-  if not task.rules then
-    task.completed = false
-    return
-  end
-
-  local hasCompletionRules = false      -- ¿Hay reglas marcadas como 'completion'?
-  local allCompletionPassed = true      -- ¿Están todas esas reglas completadas?
-
-  -- Recorremos las reglas buscando solo aquellas con role = "completion"
-  for _, rule in ipairs(task.rules) do
-    if rule.role == "completion" then
-      hasCompletionRules = true
-      if not rule.completed then
-        allCompletionPassed = false     -- Una no completada => no se puede marcar la tarea como terminada
-      end
-    end
-  end
-
-  if hasCompletionRules then
-    -- Si hay reglas específicas de finalización, usamos solo esas para decidir
-    task.completed = allCompletionPassed
-  else
-    -- Si no hay reglas de 'completion', aplicamos la lógica anterior (todas deben estar completas)
-    local allRulesComplete = true
-    for _, rule in ipairs(task.rules) do
-      if not rule.completed then
-        allRulesComplete = false
-        self:Debug("EvaluateTaskCompletion; fail", taskID, rule.type)
-        break
-      end
-    end
-    task.completed = allRulesComplete
-  end
-end
-]]--
-
 --- Actualiza el progreso y el estado de una tarea para el personaje actual.
 --- 
 --- Esta función centraliza toda la lógica de evaluación de reglas y comprobación
@@ -221,7 +163,7 @@ function CounterIt:UpdateTaskProgress(taskID, task, reset)
     return false 
   end
 
-  if self.traceMode == true then
+  if (self.traceMode == true) or reset then
     self:Debug("UpdateTaskProgress;", taskID, "reset;", reset)
   end
 
@@ -256,38 +198,25 @@ function CounterIt:UpdateTaskProgress(taskID, task, reset)
       elseif rule.type == "spell" and rule.role == "auto-count" then
         -- Si tienes progreso de spells por personaje, guárdalo aquí
         -- rp.progress = ... (si implementas progreso real)
+      elseif rule.type == "zone" and rule.zoneIDs then -- NUEVO: Evaluación para reglas de zona
+        local currentMapID = C_Map.GetBestMapForUnit("player")
+        local inZone = false
+        if currentMapID then
+            for _, zoneID in ipairs(rule.zoneIDs) do
+                if zoneID == currentMapID then
+                    inZone = true
+                    break
+                end
+            end
+        end
+        rp.completed = inZone
       end
     end
   end
 
   EvaluateTaskCompletion(st, task)
-  return st.completed
+  return st.completed or reset
 end
-
---[[
---- Actualiza el progreso de una tarea, evaluando reglas y estado.
---- @param taskID string           -- ID de la tarea
---- @param task TaskData           -- Tarea a actualizar
---- @param reset boolean|nil       -- Si es true, reinicia el estado de la tarea
---- @return boolean                -- true si la tarea está completada tras actualizar, false si no
-function CounterIt:nousar_UpdateTaskProgress(taskID, task, reset)
---if not self:IsTrackingEnabled() then return end
-  local debug = (taskID == "garbage-day") and reset
-  if reset then
-    task.completed = false
-  end
-  if task.rules then
-    for _, rule in ipairs(task.rules) do
-      if debug then
-        self:Debug("EvaluateRule", rule)
-      end
-      self:EvaluateRule(taskID, task, rule)
-    end
-  end
-  self:EvaluateTaskCompletion(taskID, task)
-  return task.completed
-end
-]]--
 
 --- Agrega una regla de tipo misión (quest) a una tarea.
 --- @param task TaskData           -- Tarea a modificar
@@ -348,33 +277,21 @@ function CounterIt:GetRuleProgress(taskID, task, idx)
     return self:HasItem(rule.itemID) and (rule.count or task.goal or 1) or 0
   elseif rule.type == "spell" and (rule.role == "auto-count" or not rule.role) then
     return rp.progress or 0
+  elseif rule.type == "zone" then -- NUEVO: Progreso para reglas de zona
+    local currentMapID = C_Map.GetBestMapForUnit("player")
+    local inZone = false
+    if currentMapID then
+        for _, zoneID in ipairs(rule.zoneIDs) do
+            if zoneID == currentMapID then
+                inZone = true
+                break
+            end
+        end
+    end
+    return inZone and (rule.count or task.goal or 1) or 0 -- Considera "completado" si está en la zona
   end
   return 0
 end
-
---[[
---- Obtiene el progreso actual de una regla concreta.
---- @param task TaskData           -- Tarea asociada
---- @param rule RuleData           -- Regla de la que obtener progreso
---- @return number                 -- Progreso numérico actual
-function CounterIt:NoUsar_GetRuleProgress(task, rule)
-  if not task then return -1 end
-
-  local taskID = task.id
-  local count = getCounters()[taskID] or 0
-
-  if rule.type == "manual" or rule.type == "petcapture" then
-    return count
-  elseif rule.type == "quest" then
-    return (C_QuestLog.ReadyForTurnIn(rule.questID) or C_QuestLog.IsQuestFlaggedCompleted(rule.questID)) and task.goal or 0
-  elseif rule.type == "item" then
-    return self:HasItem(rule.itemID) and task.goal or 0
-  elseif rule.type == "spell" and (rule.role == "auto-count" or not rule.role) then
-    return count
-  end
-  return 0
-end
-]]--
 
 --- Obtiene el progreso de la tarea para el personaje actual.
 --- @param taskID string           -- ID de la tarea
@@ -412,52 +329,6 @@ function CounterIt:GetTaskProgress(taskID, task)
     return maxProgress
   end
 end
-
---- Obtiene el progreso máximo entre todas las reglas de una tarea.
---- @param task TaskData           -- Tarea a consultar
---- @return number                 -- Máximo progreso entre todas las reglas
---[[
-  Resumen técnico
-    Usar el máximo para tareas multi-regla y multi-rol puede dar falsos completados.
-
-    Mejor usar el mínimo entre reglas de tipo "completion", o bien mostrar explícitamente 
-    el desglose de progreso de cada regla (lo ideal para tareas avanzadas).
-]]--
---[[
-function CounterIt:NoUsar_GetTaskProgress(task)
-  if not task then return -1 end
-
-  local relevantRules = {}
-  for _, rule in ipairs(task.rules or {}) do
-    if rule.role == "completion" then
-      table.insert(relevantRules, rule)
-    end
-  end
-
-  local function getProgress(rule)
-    return self:GetRuleProgress(task, rule)
-  end
-
-  if #relevantRules > 0 then
-    -- Si hay reglas de "completion", usar el mínimo de sus progresos
-    local minProgress = math.huge
-    for _, rule in ipairs(relevantRules) do
-      local p = getProgress(rule)
-      if p < minProgress then minProgress = p end
-    end
-    -- Si no hay progreso, vuelve a 0
-    return (minProgress ~= math.huge) and minProgress or 0
-  else
-    -- Si no hay reglas de "completion", usa el máximo entre todas
-    local maxProgress = 0
-    for _, rule in ipairs(task.rules or {}) do
-      local p = getProgress(rule)
-      if p > maxProgress then maxProgress = p end
-    end
-    return maxProgress
-  end
-end
-]]--
 
 --- Comprueba si un ID corresponde a una plantilla de tarea.
 --- @param id string               -- ID de plantilla
@@ -556,6 +427,43 @@ function CounterIt:TaskAllowsManualControl(task)
     end
   end
   return false
+end
+
+--- NUEVO: Marca reglas de tipo "quest" como completadas si el jugador ya completó la quest.
+--- Esta función es ideal para ser llamada al cargar el addon o después de ciertos eventos de misiones.
+---@return nil
+function CounterIt:CheckCompletedQuestsAgainstTasks()
+  local completedQuestIDs = C_QuestLog.GetAllCompletedQuestIDs()
+  if not completedQuestIDs then return end
+
+  local needRefresh = false
+  local tasks = self.globalTasks()
+  local charTasks = self.charDb.char.tasks
+  for taskID, task in pairs(tasks) do
+    local st = charTasks[taskID]
+    -- Solo procesar tareas activas y no completadas para evitar trabajo innecesario
+    if st and st.active and not st.completed and task.rules then
+      local needsUpdate = false
+      for idx, rule in ipairs(task.rules) do
+        if rule.type == "quest" and tContains(completedQuestIDs, rule.questID) then
+          -- Si la regla de quest está completada, marcamos que se necesita una actualización
+          needsUpdate = true
+          -- No es necesario evaluar la regla individualmente aquí, UpdateTaskProgress lo hará
+          -- st.rulesProgress[idx].completed = true -- Esto lo hará UpdateTaskProgress
+        end
+      end
+      if needsUpdate then
+        self:UpdateTaskProgress(taskID, task)
+        needRefresh = true
+      end
+    end
+  end
+  if needRefresh then
+  --self:RenderActiveTasks()
+    self:SendMessage("CounterIt_UpdateTasksMonitor")
+  --self:RenderAllTasks()
+    self:SendMessage("CounterIt_UpdateAllTasks")
+  end
 end
 
 -- final del archivo -- rules.lua

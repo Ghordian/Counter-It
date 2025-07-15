@@ -7,11 +7,11 @@ local L = LibStub("AceLocale-3.0"):GetLocale("CounterIt")
 --*-- DB_VERSION = 3 -- desde v0.1.5 (IDs únicos para tasks)
 --*-- DB_VERSION = 4 -- desde v0.1.6
 --*-- DB_VERSION = 5 -- desde v0.1.7
-local DB_VERSION = 6 -- desde v0.1.9
+--*-- DB_VERSION = 6 -- desde v0.1.9
+local DB_VERSION = 7 -- desde v0.1.10
 
 -- Variables compartidas entre archivos
 local globalTasks     -- nivel cuenta
---local charCounters    -- nivel personaje
 
 -- Define tus constantes de roles aquí
 CounterIt.RuleRoles = {
@@ -218,6 +218,24 @@ function CounterIt:MigrateDatabase()
   db.dbVersion = DB_VERSION
 end
 
+--- Maneja el evento CounterIt_UpdateTasksMonitor.
+-- Actualiza la interfaz del monitor de tareas activas si está visible.
+-- @param event string El nombre del evento que se ha disparado.
+function CounterIt:CounterIt_UpdateTasksMonitor(event)
+  if self.activeMonitorFrame and self.activeMonitorFrame:IsShown() then
+    self:RenderActiveTasks()
+  end
+end
+
+--- Maneja el evento CounterIt_UpdateAllTasks.
+-- Actualiza la interfaz del gestor de tareas si está visible.
+-- @param event string El nombre del evento que se ha disparado.
+function CounterIt:CounterIt_UpdateAllTasks(event)
+  if self.taskManagerFrame and self.taskManagerFrame.frame and self.taskManagerFrame.frame:IsShown() then
+    self:RenderAllTasks()
+  end
+end
+
 -- Inicialización
 function CounterIt:OnInitialize()
   -- DB global (por cuenta)
@@ -240,15 +258,12 @@ function CounterIt:OnInitialize()
   -- DB por personaje
   self.charDb = LibStub("AceDB-3.0"):New("CounterItCharData", {
     char = {
-    --counters = {},--rejected db < 5
       tasks = {},
       enableTracking = true,
       enableTriggers = true,
       debugMode = false,
     },
   })
-
---charCounters = self.charDb.char.counters-- rejected
 
   self:MigrateDatabase() -- v0.1.5
 
@@ -265,6 +280,10 @@ function CounterIt:OnInitialize()
   self:RegisterChatCommand("cit", "OpenActiveTasksMonitor")
   self:RegisterChatCommand("citreset", "ResetActiveTasks")
   self:RegisterChatCommand("citdbg", "ToggleDebugMode")
+
+  -- Implementar AceEvent-3.0
+  self:RegisterMessage("CounterIt_UpdateTasksMonitor")
+  self:RegisterMessage("CounterIt_UpdateAllTasks")
 
   -- Minimapa y DataBroker
   local LDB = LibStub("LibDataBroker-1.1"):NewDataObject("CounterIt", {
@@ -292,36 +311,36 @@ end
 
 -- Nueva función para construir la lista de ítems a monitorear
 function CounterIt:BuildActivationItemMonitorList()
-    wipe(self.itemsToMonitorForActivation) -- Limpiar antes de poblar
+  wipe(self.itemsToMonitorForActivation) -- Limpiar antes de poblar
 
-    -- Recorre todas tus tareas (globales y plantillas si quieres)
-    -- global.tasks es para las tareas que ya tiene el personaje
-    for taskID, taskData in pairs(self.db.global.tasks) do
-        for _, rule in ipairs(taskData.rules) do
-            if rule.type == "item" and rule.role == self.RuleRoles.ACTIVATION and rule.itemID then
-                self.itemsToMonitorForActivation[rule.itemID] = true -- Solo necesitamos saber que existe
-            end
-        end
+  -- Recorre todas tus tareas (globales y plantillas si quieres)
+  -- global.tasks es para las tareas que ya tiene el personaje
+  for taskID, taskData in pairs(self.db.global.tasks) do
+    for _, rule in ipairs(taskData.rules) do
+      if rule.type == "item" and rule.role == self.RuleRoles.ACTIVATION and rule.itemID then
+        self.itemsToMonitorForActivation[rule.itemID] = true -- Solo necesitamos saber que existe
+      end
     end
+  end
 
-    -- Si también quieres que las plantillas se activen automáticamente al obtener un ítem:
-    for templateID, templateData in pairs(self.taskTemplates) do
-         for _, rule in ipairs(templateData.rules) do
-            if rule.type == "item" and rule.role == self.RuleRoles.ACTIVATION and rule.itemID then
-                self.itemsToMonitorForActivation[rule.itemID] = true
-            end
-        end
+  -- Si también quieres que las plantillas se activen automáticamente al obtener un ítem:
+  for templateID, templateData in pairs(self.taskTemplates) do
+    for _, rule in ipairs(templateData.rules) do
+      if rule.type == "item" and rule.role == self.RuleRoles.ACTIVATION and rule.itemID then
+        self.itemsToMonitorForActivation[rule.itemID] = true
+      end
     end
+  end
 
-    -- Almacenar los conteos actuales de estos ítems para la próxima BAG_UPDATE
-    self:UpdateStoredItemCounts()
+  -- Almacenar los conteos actuales de estos ítems para la próxima BAG_UPDATE
+  self:UpdateStoredItemCounts()
 end
 
 -- Función para guardar los conteos actuales de los ítems monitoreados
 function CounterIt:UpdateStoredItemCounts()
-    for itemID, _ in pairs(self.itemsToMonitorForActivation) do
-        self.itemCountsBeforeBagUpdate[itemID] = GetItemCount(itemID)
-    end
+  for itemID, _ in pairs(self.itemsToMonitorForActivation) do
+    self.itemCountsBeforeBagUpdate[itemID] = GetItemCount(itemID)
+  end
 end
 
 function CounterIt:ResetActiveTasks()
@@ -345,14 +364,14 @@ end
 
 --- @param id string           -- ID de la tarea o template
 function CounterIt:HandleAutoTrigger(id)
-  self:Debug('HandleAutoTrigger', id)
+--self:Debug('HandleAutoTrigger', id)
   if self:IsTemplate(id) then
     local task = self:CreateTaskFromTemplate(id)
     if task and task.id then
       self:Debug('ActivateTask(task.id)', task.id)
       self:ActivateTask(task.id)
     else
-      self:Debug("HandleAutoTrigger: Tarea duplicada con ID: " .. tostring(id))
+    --self:Debug("HandleAutoTrigger: Tarea duplicada con ID: " .. tostring(id))
     end
   elseif self:TaskExists(id) then
     self:ActivateTask(id)

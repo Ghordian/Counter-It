@@ -89,6 +89,31 @@ L["ROLE_AUTO_COUNT"] = "Auto-Counting"
 L["ROLE_ACTIVATION"] = "Activation"
 L["NO_ROLE"] = "No Role"
 
+-- ui - rule zone type
+L["RULE_ZONE"] = "Zone/Map"
+L["RULE_ZONE_IDS_LABEL"] = "Zone/Map IDs (comma-separated)"
+L["RULE_ZONE_NAME_LABEL"] = "Zone Name (optional, for display)"
+L["RULE_ZONE_SEARCH_LABEL"] = "Search Zone"
+L["LOOKUP_ZONE"] = "Lookup Zone"
+L["SELECT_ZONE"] = "Select Zone"
+L["SEARCH_ZONE_HINT"] = "Search for zones by name"
+L["FILTER_RESULTS"] = "Filter results"
+L["ADD"] = "Add"
+L["ADDED"] = "Added"
+L["CONFIRM_SELECTION"] = "Confirm Selection"
+L["ENTER_ZONE_SEARCH_TERM"] = "Please enter a search term for zones."
+
+L["TASK_ACTIVATED_ZONE"] = "Task '%s' activated by entering zone %s."
+L["TASK_DEACTIVATED_ZONE"] = "Task '%s' deactivated by leaving zone %s."
+
+-- ui - pause tracking
+L["PAUSE_TRACKING"] = "Pause Tracking"
+L["RESUME_TRACKING"] = "Resume Tracking"
+L["TOOLTIP_PAUSE_TRACKING"] = "Click to pause all automatic task tracking."
+L["TOOLTIP_RESUME_TRACKING"] = "Click to resume all automatic task tracking."
+L["TRACKING_RESUMED"] = "Automatic tracking resumed."
+L["TRACKING_PAUSED"] = "Automatic tracking paused."
+
 L["SCROLLFRAME_DEBUG"] = "scrollFrame = %s"
 
 -- events
@@ -97,11 +122,27 @@ L["SPELLCAST_ID"] = "CheckSpellCast; %s"
 L["SPELLCAST_NAME"] = "CheckSpellCast; %s"
 L["SPELLCAST_MATCH"] = "CheckSpellCast; match; %s"
 
+L["TASK_ACTIVATED_BY_INVENTORY"] = "Task '%s' triggered by item in inventory."
+
 -- template
 L["TASK_TEMPLATE_CREATED"] = "Task created from template: %s"
 L["TEMPLATE_NOT_FOUND"] = "Template not found: %s"
 L["TITLE_SELECT_TEMPLATE"] = "Select Template"
 L["STATUSTEXT_SELECT_TEMPLATE"] = "Choose a template to create a task"
+
+L["side-with-a-cartel-hint"] = "This should be marked complete once you have chosen which Cartel you will align with for that week."
+L["ship-right-hint"] = "This should be marked complete once you have performed 10 ship jobs."
+L["reclaimed-scrap-hint"] = "This should be marked complete once you have gathered 100 empty Kaja' Cola cans from S.C.R.A.P piles."
+L["side-gig-hint"] = "This should be marked complete once you have completed a Side Gig. Side Gigs are available in the main Transportation Hub."
+L["war-mode-violence-hint"] = "This should be marked complete once you defeat five enemy players in War Mode in Undermine."
+L["go-fish-hint"] = "Go fishing in Undermine."
+L["gotta-catch-at-least-a-few-hint"] = "Catch five battle pets."
+L["rare-rivals-hint"] = "Defeat three rare rivals in Undermine."
+L["clean-the-sidestreets-hint"] = "This should be marked complete once you complete the Sidestreet Sluice Delve."
+L["time-to-vacate-hint"] = "This should be marked complete once you complete the Excavation Site 9 Delve."
+L["desire-to-d-r-i-v-e-hint"] = "This should be marked complete once you complete two races in Undermine."
+L["kaja-cruising-hint"] = "To complete this, pick up Kaja Cans in your G-99 Breakneck (D.R.I.V.E. mount)."
+L["garbage-day-hint"] = "Reclaimed Scrap."
 
 L["side-with-a-cartel"] = "Have chosen which Cartel you will align with for that week"
 L["ship-right"] = "Perform 10 ship jobs"
@@ -109,10 +150,10 @@ L["reclaimed-scrap"] = "Gathered 100 empty Kaja' Cola cans from S.C.R.A.P piles"
 L["side-gig"] = "Have completed a Side Gig. Side Gigs are available in the main Transportation Hub"
 L["war-mode-violence"] = "Defeat five enemy players in War Mode in Undermine"
 L["go-fish"] = "Go fish in Undermine"
-L["gotta-catch-at-least-a-few"] = "Captura 5 mascotas salvajes"
-L["rare-rivals"] = "Derrota a 3 NPCs raros de Minahonda"
+L["gotta-catch-at-least-a-few"] = "Catch five battle pets."
+L["rare-rivals"] = "Defeat three rare rivals in Undermine"
 L["clean-the-sidestreets"] = "complete the Sidestreet Sluice Delve"
-L["time-to-vacate"] = "Excavation Site 9 Delve completed"
+L["time-to-vacate"] = "Complete the Excavation Site 9 Delve"
 L["desire-to-d-r-i-v-e"] = "Complete two races in Undermine"
 L["kaja-cruising"] = "Collecting cans while driving the G-99 Breakneck (D.R.I.V.E. mount)"
 L["garbage-day"] = "Reclaimed Scrap"
@@ -130,4 +171,9 @@ L["DEBUG_MODE_DESC"] = "Toggle debug mode for Counter-It."
 L["ManualRulesFixed"] = "Manual rules without 'count' parameter have been fixed."
 L["TemplatesReapplied"] = "Templates reapplied to %d existing tasks."
 L["ManualRuleFixedDebug"] = "Task '%s': manual rule %d had no valid 'count', set to %d (goal=%s)"
+
+--templates
+L["BOSS_KILL_TASK_DESC"] = "Defeat %s"
+L["BOSS_KILL_TASK_HINT"] = "This task is completed by defeating %s %d times."
+L["BOSS_KILL_TASK_HINT_INSTANCE"] = "This task is completed by defeating %s %d times in %s."
 
