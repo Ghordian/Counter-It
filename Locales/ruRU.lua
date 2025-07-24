@@ -90,20 +90,20 @@ L["ROLE_ACTIVATION"] = "Активация"
 L["NO_ROLE"] = "нет роли"
 
 -- ui - rule zone type
-L["RULE_ZONE"] = "Zone/Map" --TODO
-L["RULE_ZONE_IDS_LABEL"] = "Zone/Map IDs (comma-separated)" --TODO
-L["RULE_ZONE_NAME_LABEL"] = "Zone Name (optional, for display)" --TODO
-L["RULE_ZONE_SEARCH_LABEL"] = "Search Zone" --TODO
-L["LOOKUP_ZONE"] = "Lookup Zone" --TODO
-L["SELECT_ZONE"] = "Select Zone" --TODO
-L["SEARCH_ZONE_HINT"] = "Search for zones by name" --TODO
-L["FILTER_RESULTS"] = "Filter results" --TODO
-L["ADD"] = "Add" --TODO
-L["ADDED"] = "Added" --TODO
-L["CONFIRM_SELECTION"] = "Confirm Selection" --TODO
-L["ENTER_ZONE_SEARCH_TERM"] = "Please enter a search term for zones." --TODO
-L["TASK_ACTIVATED_ZONE"] = "Task '%s' activated by entering zone %s." --TODO
-L["TASK_DEACTIVATED_ZONE"] = "Task '%s' deactivated by leaving zone %s." --TODO
+L["RULE_ZONE"] = "Зона/Карта"
+L["RULE_ZONE_IDS_LABEL"] = "ID зон/карт (через запятую)"
+L["RULE_ZONE_NAME_LABEL"] = "Название зоны (необязательно, для отображения)"
+L["RULE_ZONE_SEARCH_LABEL"] = "Поиск зоны"
+L["LOOKUP_ZONE"] = "Найти зону"
+L["SELECT_ZONE"] = "Выбрать зону"
+L["SEARCH_ZONE_HINT"] = "Искать зоны по названию"
+L["FILTER_RESULTS"] = "Фильтровать результаты"
+L["ADD"] = "Добавить"
+L["ADDED"] = "Добавлено"
+L["CONFIRM_SELECTION"] = "Подтвердить выбор"
+L["ENTER_ZONE_SEARCH_TERM"] = "Пожалуйста, введите поисковый запрос для зон."
+L["TASK_ACTIVATED_ZONE"] = "Задача '%s' активирована при входе в зону %s."
+L["TASK_DEACTIVATED_ZONE"] = "Задача '%s' деактивирована при выходе из зоны %s."
 
 L["SCROLLFRAME_DEBUG"] = "scrollFrame = %s"
 
@@ -112,7 +112,7 @@ L["SIMULATE_PET"] = "Симулировано событие поимки пит
 L["SPELLCAST_ID"] = "CheckSpellCast; %s"
 L["SPELLCAST_NAME"] = "CheckSpellCast; %s"
 L["SPELLCAST_MATCH"] = "CheckSpellCast; совпадение; %s"
-L["TASK_ACTIVATED_BY_INVENTORY"] = "Task '%s' triggered by item in inventory."
+L["TASK_ACTIVATED_BY_INVENTORY"] = "Задача '%s' вызвана предметом в инвентаре."
 
 -- template
 L["TASK_TEMPLATE_CREATED"] = "Задача создана из шаблона: %s"
@@ -163,6 +163,6 @@ L["TemplatesReapplied"] = "Шаблоны переприменены к %d су�
 L["ManualRuleFixedDebug"] = "Задача '%s': ручное правило %d не имело действительного 'count', установлено в %d (цель=%s)"
 
 --templates
-L["BOSS_KILL_TASK_DESC"] = "Defeat %s"
-L["BOSS_KILL_TASK_HINT"] = "This task is completed by defeating %s %d times."
-L["BOSS_KILL_TASK_HINT_INSTANCE"] = "This task is completed by defeating %s %d times in %s."
+L["BOSS_KILL_TASK_DESC"] = "Победить %s"
+L["BOSS_KILL_TASK_HINT"] = "Эта задача завершается победой над %s %d раз."
+L["BOSS_KILL_TASK_HINT_INSTANCE"] = "Эта задача завершается победой над %s %d раз в %s."
